@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>解決の書棚 脳トレ道場</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="logo">書</span>
+      <div>
+        <h1>脳トレ道場</h1>
+        <p class="tagline">解決の書棚 視聴者専用</p>
+      </div>
+    </div>
+    <a class="yt-link" href="https://www.youtube.com/@SolutionShelf" target="_blank" rel="noopener">
+      <span class="yt-icon">▶</span> チャンネルを見る
+    </a>
+  </header>
+
+  <main id="app">
+    <section id="home" class="screen active">
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-label">連続日数</span>
+          <span class="stat-value" id="streakValue">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">通算プレイ</span>
+          <span class="stat-value" id="totalPlays">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">最高スコア合計</span>
+          <span class="stat-value" id="totalBest">0</span>
+        </div>
+      </div>
+
+      <h2 class="section-title">トレーニングを選ぶ</h2>
+      <div class="game-grid">
+        <button class="game-card" data-game="math">
+          <span class="card-icon">➕</span>
+          <span class="card-title">瞬間暗算</span>
+          <span class="card-desc">60秒でいくつ解けるか</span>
+          <span class="card-best" data-best="math">— 点</span>
+        </button>
+        <button class="game-card" data-game="memory">
+          <span class="card-icon">🔢</span>
+          <span class="card-title">数字記憶</span>
+          <span class="card-desc">記憶力の限界に挑戦</span>
+          <span class="card-best" data-best="memory">— 桁</span>
+        </button>
+        <button class="game-card" data-game="stroop">
+          <span class="card-icon">🎨</span>
+          <span class="card-title">色判別</span>
+          <span class="card-desc">文字色を素早く答える</span>
+          <span class="card-best" data-best="stroop">— 点</span>
+        </button>
+        <button class="game-card" data-game="chain">
+          <span class="card-icon">⛓</span>
+          <span class="card-title">暗算チェイン</span>
+          <span class="card-desc">連続計算で集中力UP</span>
+          <span class="card-best" data-best="chain">— 段</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="game" class="screen">
+      <div class="game-header">
+        <button class="back-btn" id="backBtn">← 戻る</button>
+        <h2 id="gameTitle">—</h2>
+        <div class="game-meta">
+          <span id="gameMeta1" class="meta-pill">—</span>
+          <span id="gameMeta2" class="meta-pill">—</span>
+        </div>
+      </div>
+      <div class="game-stage" id="gameStage"></div>
+    </section>
+
+    <section id="result" class="screen">
+      <h2 class="result-title">結果</h2>
+      <div class="result-score">
+        <span id="resultScore">0</span>
+        <span class="result-unit" id="resultUnit">点</span>
+      </div>
+      <p class="result-message" id="resultMessage">—</p>
+      <p class="result-best" id="resultBest">—</p>
+      <div class="result-actions">
+        <button class="primary" id="retryBtn">もう一度</button>
+        <button class="secondary" id="homeBtn">トップへ</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>知識は積み上げ、思考は鍛える。</p>
+    <p class="muted">© 解決の書棚 / Brain Dojo</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
