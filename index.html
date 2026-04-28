@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>KNOWLEDGE ESTATE</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- Supabase JS — cloud sync & auth (loaded before app scripts) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -13,21 +15,36 @@
     <div class="header-inner">
       <span class="app-logo">KE</span>
       <h1 class="app-title">KNOWLEDGE ESTATE</h1>
-      <!-- AI建築士 -->
       <button class="btn-ai" id="aiAddBtn" aria-label="AI建築士でテキストを分析">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
         </svg>
         <span>AI</span>
       </button>
-      <!-- 今日の復習フィルター -->
       <button class="btn-icon filter-btn" id="filterDueBtn" aria-label="今日の復習のみ表示">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>
         </svg>
         <span class="filter-badge" id="filterBadge" hidden>0</span>
       </button>
-      <!-- 手動追加 -->
+      <!-- User account button -->
+      <div class="user-menu-wrap">
+        <button class="user-btn guest" id="userBtn" aria-label="アカウント" title="ゲストモード">
+          <span id="userAvatar">👤</span>
+        </button>
+        <div class="user-menu" id="userMenu" hidden role="menu">
+          <div class="user-menu-info">
+            <span class="user-menu-emoji" id="userMenuEmoji">👤</span>
+            <div>
+              <p class="user-menu-name"  id="userMenuName">ゲスト</p>
+              <p class="user-menu-email" id="userMenuEmail">ゲストモード</p>
+            </div>
+          </div>
+          <div class="user-menu-sep"></div>
+          <button class="user-menu-item" id="userMenuLogin">ログイン / 新規登録</button>
+          <button class="user-menu-item user-menu-item--danger" id="userMenuLogout" hidden>ログアウト</button>
+        </div>
+      </div>
       <button class="btn-icon" id="addSeedBtn" aria-label="知識の種を追加">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -39,15 +56,9 @@
   <!-- ===== ROOM ===== -->
   <main class="room" id="room">
     <div class="room-floor"></div>
-
-    <!-- Live2D キャラクター予約エリア -->
     <div class="live2d-placeholder" aria-hidden="true"><span>Character</span></div>
-
-    <!-- キャラクター吹き出し -->
     <div class="char-bubble" id="characterBubble"></div>
-
     <div class="seeds-container" id="seedsContainer"></div>
-
     <div class="empty-state" id="emptyState" hidden>
       <p class="empty-icon">🌱</p>
       <p class="empty-text">部屋に知識の種を<br>配置しましょう</p>
@@ -55,35 +66,56 @@
     </div>
   </main>
 
-  <!-- ===== STATS BAR ===== -->
-  <div class="stats-bar">
-    <div class="stat">
-      <span class="stat-value" id="statTotal">0</span>
-      <span class="stat-label">知識の種</span>
+  <!-- ===== BOTTOM BAR ===== -->
+  <div class="bottom-bar">
+    <div class="stats-group">
+      <div class="stat-pill">
+        <span class="stat-pill-val" id="statTotal">0</span>
+        <span class="stat-pill-label">🌱</span>
+      </div>
+      <div class="stat-pill stat-pill--due">
+        <span class="stat-pill-val" id="statDue">0</span>
+        <span class="stat-pill-label">⏰</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-val" id="statLearned">0</span>
+        <span class="stat-pill-label">✓</span>
+      </div>
     </div>
-    <div class="stat-divider"></div>
-    <div class="stat">
-      <span class="stat-value stat-value--due" id="statDue">0</span>
-      <span class="stat-label">今日の復習</span>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat">
-      <span class="stat-value" id="statLearned">0</span>
-      <span class="stat-label">学習済み</span>
+    <div class="bar-sep"></div>
+    <div class="bar-actions">
+      <button class="bar-btn" id="feedBtn" aria-label="みんなの建築ログ">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>フィード</span>
+      </button>
+      <button class="bar-btn" id="settingsBtn" aria-label="部屋のコーディネート">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+          <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+          <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+          <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+        </svg>
+        <span>設定</span>
+      </button>
     </div>
   </div>
 
   <!-- ===== SEED MODAL ===== -->
   <div class="modal-overlay" id="seedModal" hidden aria-modal="true" role="dialog">
-    <div class="modal-card" id="modalCard">
-
+    <div class="modal-card">
       <div class="modal-header">
         <button class="btn-icon modal-close" id="modalClose" aria-label="閉じる">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
-        <div class="modal-emoji-picker" id="emojiPicker">
+        <div class="modal-emoji-picker">
           <button class="emoji-current" id="emojiBtn" aria-label="アイコンを変更">
             <span id="currentEmoji">📚</span>
           </button>
@@ -93,12 +125,9 @@
           <input class="modal-title-input" id="modalTitle" type="text" placeholder="タイトルを入力..." maxlength="60" />
         </div>
       </div>
-
       <div class="modal-body">
         <textarea class="modal-memo" id="modalMemo" placeholder="ここにメモを書いてください...&#10;&#10;• 重要なポイント&#10;• 気づき&#10;• 次のアクション" rows="5"></textarea>
       </div>
-
-      <!-- SM-2 Review Panel -->
       <div class="review-panel">
         <div class="review-meta">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -114,12 +143,10 @@
           <button class="review-btn review-btn--perfect" data-quality="5" type="button"><span class="review-btn-label">完璧</span><span class="review-btn-sub">─</span></button>
         </div>
       </div>
-
       <div class="modal-footer">
         <button class="btn-ghost btn-danger" id="modalDelete">削除</button>
         <button class="btn-primary" id="modalSave">メモを保存</button>
       </div>
-
     </div>
   </div>
 
@@ -147,8 +174,6 @@
   <!-- ===== AI 建築士 MODAL ===== -->
   <div class="modal-overlay" id="aiModal" hidden aria-modal="true" role="dialog">
     <div class="modal-card modal-card--ai">
-
-      <!-- Step 1: テキスト入力 -->
       <div id="aiStep1">
         <div class="modal-header">
           <button class="btn-icon modal-close" id="aiModalClose" aria-label="閉じる">
@@ -156,14 +181,11 @@
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
-          <div class="ai-modal-heading">
-            <span class="ai-badge">AI</span>
-            <h2 class="modal-heading">AI建築士</h2>
-          </div>
+          <div class="ai-modal-heading"><span class="ai-badge">AI</span><h2 class="modal-heading">AI建築士</h2></div>
         </div>
         <div class="modal-body">
           <p class="ai-hint">YouTube要約・読書メモ・記事などをペーストすると<br>AIが自動でタイトル・絵文字・重要ポイントを抽出します</p>
-          <textarea class="ai-textarea" id="aiInput" placeholder="テキストをここに貼り付けてください...&#10;&#10;例）&#10;今日読んだ本のメモ：認知バイアスとは...&#10;YouTubeの要約：効果的な学習法として..."></textarea>
+          <textarea class="ai-textarea" id="aiInput" placeholder="テキストをここに貼り付けてください..."></textarea>
           <div class="ai-textarea-meta">
             <span class="ai-char-count"><span id="aiCharCount">0</span> 文字</span>
             <span class="ai-min-hint">20文字以上</span>
@@ -178,22 +200,14 @@
           </button>
         </div>
       </div>
-
-      <!-- Step 2: 分析中 -->
       <div id="aiStep2" hidden>
         <div class="ai-loading-wrap">
-          <div class="ai-spinner-wrap">
-            <div class="ai-spinner"></div>
-          </div>
+          <div class="ai-spinner-wrap"><div class="ai-spinner"></div></div>
           <p class="ai-loading-title">AI建築士が分析中...</p>
           <p class="ai-loading-sub">テキストから知識の種を設計しています</p>
-          <div class="ai-loading-dots">
-            <span></span><span></span><span></span>
-          </div>
+          <div class="ai-loading-dots"><span></span><span></span><span></span></div>
         </div>
       </div>
-
-      <!-- Step 3: プレビュー -->
       <div id="aiStep3" hidden>
         <div class="modal-header">
           <button class="btn-icon" id="aiBackBtn" aria-label="戻る">
@@ -205,7 +219,7 @@
         </div>
         <div class="modal-body">
           <div class="ai-preview-card">
-            <div class="ai-preview-emoji" id="aiPreviewEmoji" aria-label="抽出された絵文字">📚</div>
+            <div class="ai-preview-emoji" id="aiPreviewEmoji">📚</div>
             <input class="field-input ai-preview-title" id="aiPreviewTitle" type="text" maxlength="60" placeholder="タイトル" />
           </div>
           <div class="ai-points-section">
@@ -223,10 +237,104 @@
           </button>
         </div>
       </div>
-
     </div>
   </div>
 
+  <!-- ===== FEED MODAL ===== -->
+  <div class="modal-overlay feed-overlay" id="feedModal" hidden aria-modal="true" role="dialog">
+    <div class="feed-panel">
+      <div class="feed-header">
+        <button class="btn-icon" id="feedClose" aria-label="閉じる">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <h2 class="feed-title">みんなの建築ログ</h2>
+        <span class="feed-live-dot" aria-hidden="true"></span>
+      </div>
+      <div class="feed-list" id="feedList" role="list">
+        <!-- JS で生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS MODAL ===== -->
+  <div class="modal-overlay" id="settingsModal" hidden aria-modal="true" role="dialog">
+    <div class="modal-card settings-card">
+      <div class="modal-header">
+        <button class="btn-icon modal-close" id="settingsClose" aria-label="閉じる">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <h2 class="modal-heading">部屋のコーディネート</h2>
+      </div>
+      <div class="modal-body">
+        <p class="settings-hint">テーマを選ぶとアクセントカラーも連動して変わります</p>
+        <div class="theme-grid" id="themeGrid">
+          <!-- JS で生成 -->
+        </div>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn-primary" id="settingsApply">このテーマを適用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AUTH MODAL ===== -->
+  <div class="modal-overlay" id="authModal" hidden aria-modal="true" role="dialog">
+    <div class="modal-card modal-card--sm auth-card">
+      <div class="modal-header">
+        <button class="btn-icon modal-close" id="authModalClose" aria-label="閉じる">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <h2 class="modal-heading">KNOWLEDGE ESTATE</h2>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="authTabLogin">ログイン</button>
+        <button class="auth-tab" id="authTabRegister">新規登録</button>
+      </div>
+      <div class="modal-body auth-body">
+        <div class="auth-error" id="authError" hidden></div>
+        <input class="field-input" id="authName" type="text"
+               placeholder="表示名（例: Haruki M.）" autocomplete="nickname" hidden />
+        <input class="field-input" id="authEmail" type="email"
+               placeholder="メールアドレス" autocomplete="email" />
+        <input class="field-input" id="authPassword" type="password"
+               placeholder="パスワード（8文字以上）" autocomplete="current-password" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="authGuestBtn">ゲストで続ける</button>
+        <button class="btn-primary auth-submit" id="authSubmitBtn">ログイン</button>
+      </div>
+      <p class="auth-note" id="authNote">※ Supabaseプロジェクトを設定後に認証が有効になります</p>
+    </div>
+  </div>
+
+  <!-- ===== MIGRATE DIALOG ===== -->
+  <div class="modal-overlay" id="migrateModal" hidden aria-modal="true" role="dialog">
+    <div class="modal-card modal-card--sm">
+      <div class="modal-header">
+        <h2 class="modal-heading">🌱 ゲストデータの移行</h2>
+      </div>
+      <div class="modal-body">
+        <p class="migrate-desc">ゲスト時代に作成した
+          <strong id="migrateCount">0</strong> 個の知識の種を<br>クラウドに移行しますか？</p>
+        <p class="migrate-sub">移行後もこの端末のデータはそのまま残ります。</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="migrateSkipBtn">スキップ</button>
+        <button class="btn-primary" id="migrateConfirmBtn">移行する ✨</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script src="app-core.js"></script>
+  <script src="app-features.js"></script>
+  <script src="app-auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
