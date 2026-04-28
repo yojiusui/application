@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1b4332"/>
+      <stop offset="100%" stop-color="#2d6a4f"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d9d3c9"/>
+      <stop offset="100%" stop-color="#beb8ac"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded-square background -->
+  <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  <!-- Room silhouette: ceiling -->
+  <rect x="0" y="0" width="192" height="100" rx="0" fill="#1b4332" opacity="0.3"/>
+  <!-- Room floor -->
+  <rect x="0" y="100" width="192" height="92" rx="0" fill="url(#floor)" opacity="0.25"/>
+  <!-- KE monogram -->
+  <text x="96" y="115"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="72"
+        font-weight="700"
+        fill="white"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        opacity="0.95">KE</text>
+  <!-- Small seed emoji dots (decorative) -->
+  <circle cx="44"  cy="148" r="8"  fill="white" opacity="0.25"/>
+  <circle cx="148" cy="140" r="6"  fill="white" opacity="0.20"/>
+  <circle cx="96"  cy="156" r="5"  fill="white" opacity="0.15"/>
+</svg>

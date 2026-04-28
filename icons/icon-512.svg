@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1b4332"/>
+      <stop offset="100%" stop-color="#2d6a4f"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d9d3c9"/>
+      <stop offset="100%" stop-color="#beb8ac"/>
+    </linearGradient>
+  </defs>
+  <!-- Safe-area background for maskable (fills bleed zone) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Room ceiling area -->
+  <rect x="0" y="0" width="512" height="260" fill="#1b4332" opacity="0.28"/>
+  <!-- Room floor area -->
+  <rect x="0" y="260" width="512" height="252" fill="url(#floor)" opacity="0.22"/>
+  <!-- Subtle grid lines (bookshelf effect) -->
+  <line x1="0" y1="258" x2="512" y2="258" stroke="white" stroke-width="1.5" opacity="0.12"/>
+  <!-- KE monogram -->
+  <text x="256" y="295"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="200"
+        font-weight="700"
+        fill="white"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        opacity="0.95">KE</text>
+  <!-- Decorative seed bubbles -->
+  <circle cx="110"  cy="400" r="22" fill="white" opacity="0.18"/>
+  <circle cx="400"  cy="390" r="16" fill="white" opacity="0.14"/>
+  <circle cx="256"  cy="420" r="13" fill="white" opacity="0.12"/>
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1b4332"/>
+      <stop offset="60%"  stop-color="#2d6a4f"/>
+      <stop offset="100%" stop-color="#40916c"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#ebe8e1"/>
+      <stop offset="100%" stop-color="#c9c3b7"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Room floor stripe -->
+  <rect x="0" y="390" width="1200" height="240" fill="url(#floor)" opacity="0.18"/>
+  <!-- Ceiling/wall divide line -->
+  <line x1="0" y1="390" x2="1200" y2="390" stroke="white" stroke-width="1" opacity="0.12"/>
+
+  <!-- KE logo box -->
+  <rect x="64" y="64" width="72" height="72" rx="16" fill="white" opacity="0.15"/>
+  <text x="100" y="112" font-family="Georgia, serif" font-size="30" font-weight="700"
+        fill="white" text-anchor="middle" dominant-baseline="middle">KE</text>
+
+  <!-- Main title -->
+  <text x="64" y="260" font-family="Georgia, 'Hiragino Mincho ProN', serif"
+        font-size="80" font-weight="700" fill="white" opacity="0.97">KNOWLEDGE ESTATE</text>
+
+  <!-- Sub tagline JP -->
+  <text x="66" y="328" font-family="'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif"
+        font-size="32" fill="white" opacity="0.80">あなたの知識を、部屋に育てよう。</text>
+
+  <!-- Decorative seed cards -->
+  <!-- Card 1 -->
+  <rect x="64" y="430" width="130" height="80" rx="14" fill="white" opacity="0.12"/>
+  <text x="129" y="476" font-size="36" text-anchor="middle" dominant-baseline="middle">📚</text>
+
+  <!-- Card 2 -->
+  <rect x="214" y="450" width="110" height="72" rx="14" fill="white" opacity="0.10"/>
+  <text x="269" y="490" font-size="30" text-anchor="middle" dominant-baseline="middle">💡</text>
+
+  <!-- Card 3 -->
+  <rect x="344" y="435" width="120" height="78" rx="14" fill="white" opacity="0.09"/>
+  <text x="404" y="476" font-size="32" text-anchor="middle" dominant-baseline="middle">🧠</text>
+
+  <!-- Card 4 -->
+  <rect x="484" y="455" width="100" height="68" rx="14" fill="white" opacity="0.08"/>
+  <text x="534" y="493" font-size="28" text-anchor="middle" dominant-baseline="middle">⭐</text>
+
+  <!-- Right-side decorative circle art -->
+  <circle cx="990" cy="270" r="200" fill="white" opacity="0.04"/>
+  <circle cx="990" cy="270" r="150" fill="white" opacity="0.04"/>
+  <circle cx="990" cy="270" r="100" fill="white" opacity="0.06"/>
+  <text x="990" y="270" font-size="110" text-anchor="middle" dominant-baseline="middle">🏛</text>
+
+  <!-- Bottom URL hint -->
+  <text x="1136" y="610" font-family="monospace" font-size="18"
+        fill="white" opacity="0.35" text-anchor="end">knowledge-estate.vercel.app</text>
+</svg>

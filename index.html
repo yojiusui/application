@@ -3,8 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>KNOWLEDGE ESTATE</title>
+
+  <!-- ═══ Primary SEO ═══════════════════════════════════════════════════════ -->
+  <title>KNOWLEDGE ESTATE — あなたの知識を、部屋に育てよう</title>
+  <meta name="description"
+        content="知識の種を部屋に配置し、スペースド・リピティション（間隔反復法）で記憶に定着させるパーソナル・ナレッジ・ルームです。読書・学習・アイデアを「建築」するように管理しましょう。" />
+  <meta name="keywords"
+        content="スペースド・リピティション, 間隔反復, 知識管理, 学習, メモリーパレス, PKM, 読書記録" />
+  <meta name="author" content="KNOWLEDGE ESTATE" />
+  <link rel="canonical" href="https://knowledge-estate.vercel.app/" />
+
+  <!-- ═══ Open Graph (SNS シェア) ══════════════════════════════════════════ -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:site_name"   content="KNOWLEDGE ESTATE" />
+  <meta property="og:title"       content="KNOWLEDGE ESTATE — あなたの知識を、部屋に育てよう" />
+  <meta property="og:description" content="知識の種を部屋に配置し、科学的な間隔反復法で記憶を定着。AIが自動でタイトル・ポイントを抽出。あなただけのナレッジ・ルームを建築しよう。" />
+  <meta property="og:url"         content="https://knowledge-estate.vercel.app/" />
+  <meta property="og:image"       content="https://knowledge-estate.vercel.app/icons/og-image.svg" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale"      content="ja_JP" />
+
+  <!-- ═══ Twitter Card ═════════════════════════════════════════════════════ -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="KNOWLEDGE ESTATE — あなたの知識を、部屋に育てよう" />
+  <meta name="twitter:description" content="知識の種を部屋に配置し、AIと間隔反復法で記憶を定着させるナレッジ・ルームアプリ。" />
+  <meta name="twitter:image"       content="https://knowledge-estate.vercel.app/icons/og-image.svg" />
+
+  <!-- ═══ PWA ══════════════════════════════════════════════════════════════ -->
+  <meta name="theme-color" content="#2d6a4f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="知識の書棚" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+
   <link rel="stylesheet" href="styles.css" />
+
   <!-- Supabase JS — cloud sync & auth (loaded before app scripts) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -336,5 +373,15 @@
   <script src="app-features.js"></script>
   <script src="app-auth.js"></script>
   <script src="app.js"></script>
+
+  <!-- Service Worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .catch(() => { /* SW optional — app works without it */ });
+      });
+    }
+  </script>
 </body>
 </html>
