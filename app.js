@@ -35,7 +35,7 @@ aiAddBtn?.addEventListener('click',    openAiModal);
 aiModalClose?.addEventListener('click', closeAiModal);
 aiModal?.addEventListener('click',     e => { if (e.target === aiModal) closeAiModal(); });
 aiInput?.addEventListener('input',     () => {
-  if (aiCharCount) aiCharCount.textContent = `${aiInput.value.length} / 2000`;
+  if (aiCharCount) aiCharCount.textContent = String(aiInput.value.length);
 });
 aiAnalyzeBtn?.addEventListener('click', runAnalysis);
 aiBackBtn?.addEventListener('click',   () => showAiStep(1));

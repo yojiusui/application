@@ -39,6 +39,7 @@ function applyTheme(themeId) {
   r.setProperty('--accent-light', t.accentLight);
   room.style.background = t.bg;
   document.body.dataset.theme = t.id;
+  room.classList.toggle('dark-room', t.id === 'night');
 }
 
 function previewTheme(themeId) {
@@ -93,9 +94,9 @@ function applySettingsTheme() {
 function showBubble(text, durationMs = 3000) {
   if (!characterBubble) return;
   characterBubble.textContent = text;
-  characterBubble.hidden = false;
+  characterBubble.classList.add('visible');
   clearTimeout(characterBubble._timer);
-  characterBubble._timer = setTimeout(() => { characterBubble.hidden = true; }, durationMs);
+  characterBubble._timer = setTimeout(() => { characterBubble.classList.remove('visible'); }, durationMs);
 }
 
 // ─── Star Particles ───────────────────────────────────────────────────────────
@@ -181,11 +182,11 @@ function buildPostCard(post) {
   const profile = post.profiles || {};
   const seed    = post.seeds   || {};
   card.innerHTML = `
-    <div class="post-header">
+    <div class="post-user-row">
       <span class="post-avatar">${escapeHtml(profile.avatar_emoji || '👤')}</span>
-      <div class="post-meta">
-        <span class="post-name">${escapeHtml(profile.display_name || '匿名')}</span>
-        <span class="post-time">${formatRelativeTime(post.created_at)}</span>
+      <div class="post-user-info">
+        <div class="post-user-name">${escapeHtml(profile.display_name || '匿名')}</div>
+        <div class="post-user-meta">${formatRelativeTime(post.created_at)}</div>
       </div>
     </div>
     <div class="post-seed-chip">${escapeHtml(seed.emoji || '📝')} ${escapeHtml(seed.title || '')}</div>
@@ -223,7 +224,7 @@ function openAiModal() {
   if (!aiModal) return;
   showAiStep(1);
   if (aiInput) { aiInput.value = ''; }
-  if (aiCharCount) aiCharCount.textContent = '0 / 2000';
+  if (aiCharCount) aiCharCount.textContent = '0';
   aiExtracted = null;
   aiModal.hidden = false;
   if (aiInput) aiInput.focus();
@@ -305,6 +306,7 @@ async function runAnalysis() {
     aiPointsList.innerHTML = '';
     (result.points || []).forEach(pt => {
       const li = document.createElement('li');
+      li.className = 'ai-point-item';
       li.textContent = pt;
       aiPointsList.appendChild(li);
     });
