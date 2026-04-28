@@ -1,102 +1,131 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>解決の書棚 脳トレ道場</title>
-<link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>KNOWLEDGE ESTATE</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="brand">
-      <span class="logo">書</span>
-      <div>
-        <h1>脳トレ道場</h1>
-        <p class="tagline">解決の書棚 視聴者専用</p>
-      </div>
+
+  <!-- ===== HEADER ===== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <span class="app-logo">KE</span>
+      <h1 class="app-title">KNOWLEDGE ESTATE</h1>
+      <button class="btn-icon" id="addSeedBtn" aria-label="知識の種を追加">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
     </div>
-    <a class="yt-link" href="https://www.youtube.com/@SolutionShelf" target="_blank" rel="noopener">
-      <span class="yt-icon">▶</span> チャンネルを見る
-    </a>
   </header>
 
-  <main id="app">
-    <section id="home" class="screen active">
-      <div class="stats-row">
-        <div class="stat">
-          <span class="stat-label">連続日数</span>
-          <span class="stat-value" id="streakValue">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">通算プレイ</span>
-          <span class="stat-value" id="totalPlays">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">最高スコア合計</span>
-          <span class="stat-value" id="totalBest">0</span>
-        </div>
-      </div>
+  <!-- ===== ROOM ===== -->
+  <main class="room" id="room">
 
-      <h2 class="section-title">トレーニングを選ぶ</h2>
-      <div class="game-grid">
-        <button class="game-card" data-game="math">
-          <span class="card-icon">➕</span>
-          <span class="card-title">瞬間暗算</span>
-          <span class="card-desc">60秒でいくつ解けるか</span>
-          <span class="card-best" data-best="math">— 点</span>
-        </button>
-        <button class="game-card" data-game="memory">
-          <span class="card-icon">🔢</span>
-          <span class="card-title">数字記憶</span>
-          <span class="card-desc">記憶力の限界に挑戦</span>
-          <span class="card-best" data-best="memory">— 桁</span>
-        </button>
-        <button class="game-card" data-game="stroop">
-          <span class="card-icon">🎨</span>
-          <span class="card-title">色判別</span>
-          <span class="card-desc">文字色を素早く答える</span>
-          <span class="card-best" data-best="stroop">— 点</span>
-        </button>
-        <button class="game-card" data-game="chain">
-          <span class="card-icon">⛓</span>
-          <span class="card-title">暗算チェイン</span>
-          <span class="card-desc">連続計算で集中力UP</span>
-          <span class="card-best" data-best="chain">— 段</span>
-        </button>
-      </div>
-    </section>
+    <!-- 床の奥行きライン -->
+    <div class="room-floor"></div>
 
-    <section id="game" class="screen">
-      <div class="game-header">
-        <button class="back-btn" id="backBtn">← 戻る</button>
-        <h2 id="gameTitle">—</h2>
-        <div class="game-meta">
-          <span id="gameMeta1" class="meta-pill">—</span>
-          <span id="gameMeta2" class="meta-pill">—</span>
-        </div>
-      </div>
-      <div class="game-stage" id="gameStage"></div>
-    </section>
+    <!-- Live2D キャラクター予約エリア -->
+    <div class="live2d-placeholder" aria-hidden="true">
+      <span>Character</span>
+    </div>
 
-    <section id="result" class="screen">
-      <h2 class="result-title">結果</h2>
-      <div class="result-score">
-        <span id="resultScore">0</span>
-        <span class="result-unit" id="resultUnit">点</span>
-      </div>
-      <p class="result-message" id="resultMessage">—</p>
-      <p class="result-best" id="resultBest">—</p>
-      <div class="result-actions">
-        <button class="primary" id="retryBtn">もう一度</button>
-        <button class="secondary" id="homeBtn">トップへ</button>
-      </div>
-    </section>
+    <!-- 知識の種コンテナ（JS で動的生成） -->
+    <div class="seeds-container" id="seedsContainer"></div>
+
+    <!-- 空状態 -->
+    <div class="empty-state" id="emptyState" hidden>
+      <p class="empty-icon">🌱</p>
+      <p class="empty-text">部屋に知識の種を<br>配置しましょう</p>
+      <button class="btn-primary" id="emptyAddBtn">最初の種を置く</button>
+    </div>
+
   </main>
 
-  <footer class="site-footer">
-    <p>知識は積み上げ、思考は鍛える。</p>
-    <p class="muted">© 解決の書棚 / Brain Dojo</p>
-  </footer>
+  <!-- ===== STATS BAR ===== -->
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-value" id="statTotal">0</span>
+      <span class="stat-label">知識の種</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-value" id="statReviewed">0</span>
+      <span class="stat-label">レビュー済み</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-value" id="statRooms">1</span>
+      <span class="stat-label">部屋</span>
+    </div>
+  </div>
+
+  <!-- ===== SEED MODAL ===== -->
+  <div class="modal-overlay" id="seedModal" hidden aria-modal="true" role="dialog">
+    <div class="modal-card" id="modalCard">
+
+      <div class="modal-header">
+        <button class="btn-icon modal-close" id="modalClose" aria-label="閉じる">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <div class="modal-emoji-picker" id="emojiPicker">
+          <button class="emoji-current" id="emojiBtn" aria-label="アイコンを変更">
+            <span id="currentEmoji">📚</span>
+          </button>
+          <div class="emoji-grid" id="emojiGrid" hidden>
+            <!-- JS で生成 -->
+          </div>
+        </div>
+        <div class="modal-title-wrap">
+          <input class="modal-title-input" id="modalTitle" type="text" placeholder="タイトルを入力..." maxlength="60" />
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <textarea class="modal-memo" id="modalMemo" placeholder="ここにメモを書いてください...&#10;&#10;• 重要なポイント&#10;• 気づき&#10;• 次のアクション" rows="8"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost btn-danger" id="modalDelete">削除</button>
+        <div class="modal-footer-right">
+          <label class="reviewed-toggle">
+            <input type="checkbox" id="modalReviewed" />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">レビュー済み</span>
+          </label>
+          <button class="btn-primary" id="modalSave">保存</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== ADD SEED MODAL ===== -->
+  <div class="modal-overlay" id="addModal" hidden aria-modal="true" role="dialog">
+    <div class="modal-card modal-card--sm">
+      <div class="modal-header">
+        <button class="btn-icon modal-close" id="addModalClose" aria-label="閉じる">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <h2 class="modal-heading">新しい知識の種</h2>
+      </div>
+      <div class="modal-body">
+        <input class="field-input" id="addTitle" type="text" placeholder="タイトル（例: 認知バイアス）" maxlength="60" />
+        <div class="category-chips" id="categoryChips">
+          <!-- JS で生成 -->
+        </div>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn-primary" id="addConfirmBtn">配置する</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
