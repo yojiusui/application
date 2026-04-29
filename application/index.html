@@ -32,6 +32,7 @@
   </div>
 
   <div class="crosshair" id="crosshair"></div>
+  <div class="aim-hint" id="aim-hint" hidden>本棚を開く</div>
 
   <div class="hud key-hud">
     <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動</span>
@@ -113,6 +114,45 @@
         <li><kbd>Click</kbd> 基礎を置く</li>
       </ul>
       <button class="primary-btn lg" id="start-btn">館に入る</button>
+    </div>
+  </div>
+
+  <div class="hologram" id="hologram" hidden>
+    <div class="holo-stage">
+      <div class="holo-frame">
+        <div class="holo-bg"></div>
+        <div class="holo-scan"></div>
+        <header class="holo-header">
+          <div class="holo-channel">
+            <div class="channel-avatar">KE</div>
+            <div>
+              <div class="channel-name">Knowledge Estate Channel</div>
+              <div class="channel-meta">Latest uploads · 神経科学チャンネル</div>
+            </div>
+          </div>
+          <button class="holo-close" id="holo-close" type="button" aria-label="閉じる">×</button>
+        </header>
+        <ul class="video-list" id="video-list"></ul>
+        <footer class="holo-footer">
+          <span class="holo-status" id="holo-status">動画を選択してください</span>
+          <span class="holo-tip">Esc で閉じる</span>
+        </footer>
+      </div>
+
+      <aside class="summary-panel" id="summary-panel" hidden>
+        <div class="summary-bg"></div>
+        <header class="summary-header">
+          <span class="summary-eyebrow">— Neuroscientific Summary —</span>
+          <h3 id="summary-title"></h3>
+          <div class="summary-meta" id="summary-meta"></div>
+        </header>
+        <div class="summary-stats" id="summary-stats"></div>
+        <div class="summary-section-title">Cognitive Overview</div>
+        <div class="summary-stream" id="summary-stream"></div>
+        <div class="summary-section-title">Key Neural Insights</div>
+        <ul class="summary-insights" id="summary-insights"></ul>
+        <div class="summary-tags" id="summary-tags"></div>
+      </aside>
     </div>
   </div>
 

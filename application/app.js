@@ -168,6 +168,10 @@ controls.addEventListener('unlock', () => {
 const keys = Object.create(null);
 document.addEventListener('keydown', (e) => {
   keys[e.code] = true;
+  if (hologramOpen) {
+    if (e.code === 'Escape') { e.preventDefault(); closeHologram(); }
+    return;
+  }
   if (e.code === 'KeyB' && startOverlay.hidden) {
     e.preventDefault();
     setMode(mode === 'walk' ? 'build' : 'walk');
@@ -538,9 +542,15 @@ function removeFurniture() {
 
 // ---------- Click dispatch ----------
 document.addEventListener('mousedown', (e) => {
+  if (hologramOpen) return;
   if (mode === 'walk' && controls.isLocked) {
-    if (e.button === 0) placeCube();
-    else if (e.button === 2) removeCube();
+    if (e.button === 0) {
+      const bookshelf = lookedAtBookshelf();
+      if (bookshelf) { openHologram(); return; }
+      placeCube();
+    } else if (e.button === 2) {
+      removeCube();
+    }
   } else if (mode === 'build') {
     if (e.target !== canvas) return;
     if (e.button === 0) placeFurniture();
@@ -660,13 +670,230 @@ document.querySelectorAll('.cat-item').forEach((btn) => {
 
 document.getElementById('exit-build-btn')?.addEventListener('click', () => setMode('walk'));
 
+// ---------- Hologram: bookshelf interaction ----------
+const VIDEOS = [
+  { id: 'ke01', title: '集中力を10倍にする脳の使い方',           duration: '12:34', icon: '◈', grad: ['#7a5cff', '#5cd8ff'] },
+  { id: 'ke02', title: '記憶を定着させる7つの神経科学テクニック', duration: '18:42', icon: '◆', grad: ['#ff6b88', '#ffb84d'] },
+  { id: 'ke03', title: 'ドーパミンの科学：報酬系と学習動機',     duration: '15:20', icon: '✦', grad: ['#ffd166', '#d4af7a'] },
+  { id: 'ke04', title: '前頭前野を鍛える日常習慣',                duration: '09:18', icon: '❖', grad: ['#a78bfa', '#7a5cff'] },
+  { id: 'ke05', title: 'デフォルト・モード・ネットワークの謎',   duration: '21:55', icon: '∞', grad: ['#5cd8ff', '#3a8aff'] },
+  { id: 'ke06', title: 'ミラーニューロンと共感の神経科学',       duration: '14:07', icon: '✧', grad: ['#fb7185', '#a78bfa'] }
+];
+
+const SUMMARY_POOL = [
+  '本動画は、視聴者の前頭前野を継続的に刺激する構成で設計されています。導入部で扁桃体への軽微な情動アクセスを行い、注意のスポットライトを獲得した後、ワーキングメモリへの段階的な情報投下によって理解の足場を構築。中盤では報酬予測誤差を意図的に発生させることでドーパミン放出を促し、長期記憶への定着を図る、極めて洗練された認知設計が認められます。',
+  '解析結果から、本コンテンツは「分散学習効果」を最大化する時間設計を採用していることが示唆されます。約7〜9分間隔で挿入される視覚的アンカーがデフォルト・モード・ネットワークの暴走を抑制し、能動的注意を維持。海馬と新皮質の同期発火を促進する構成により、視聴後24時間の保持率が一般的な動画より約32%高いと推定されます。',
+  '本動画はミラーニューロン系の活性化に長けており、視聴者の共感的理解を強く誘発します。話者の身振り・声調の微細な変化が前帯状皮質を継続的に刺激し、社会的認知ネットワークの活動を高める結果、抽象概念の自分事化が促進されます。学習というより「経験」として記憶される傾向が強い、上質な知的コンテンツです。',
+  '認知負荷理論の観点から見ると、本動画は内在的負荷を低く抑えつつ、関連的負荷を適切に高める優れたバランスを保っています。背外側前頭前皮質の働きを過剰に圧迫せず、メタ認知の発動余地を残す構成は、長時間視聴でも疲労を感じさせません。学習継続性の高い、戦略的に設計された情報体験です。',
+  '視覚情報と聴覚情報のクロスモーダル統合が緻密に設計されており、上側頭溝の活動を効率的に引き出しています。情報の冗長性が適切に保たれているため、海馬への入力が安定し、エピソード記憶として残りやすい構造です。終盤の余韻がデフォルト・モード・ネットワークへ穏やかにバトンタッチし、内省的な再構成を促す印象的な閉じ方を採用しています。'
+];
+
+const INSIGHTS_POOL = [
+  '導入30秒で扁桃体反応を誘発し、注意リソースを優先確保している',
+  '報酬予測誤差を中盤で意図的に発生させ、ドーパミン放出を促進',
+  '視覚的・聴覚的キューを同期させ、感覚統合野の処理効率を向上',
+  '復唱と要約の挿入により、海馬の記憶固定化プロセスを支援',
+  'メタファー使用率が高く、右半球の連合野を活発に動員している',
+  '視点切り替えの間隔がデフォルト・モード・ネットワークの活性化を抑制',
+  '感情価の振幅が適度で、扁桃体−前頭前野の結合性を高める設計',
+  '終盤で意図的な「未完結性」を残し、ツァイガルニク効果による反芻を誘発'
+];
+
+const TAGS_POOL = [
+  '前頭前野', '海馬', 'ドーパミン報酬系', 'ミラーニューロン',
+  'ワーキングメモリ', 'デフォルト・モード・ネットワーク', '扁桃体',
+  'メタ認知', '認知的柔軟性', '情動記憶', '感覚統合', '注意ネットワーク'
+];
+
+function hashSeed(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
+}
+function pick(arr, seed) { return arr[seed % arr.length]; }
+function shuffle(arr, seed) {
+  const a = [...arr]; let s = seed || 1;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280;
+    const j = Math.floor((s / 233280) * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const hologramEl   = document.getElementById('hologram');
+const videoListEl  = document.getElementById('video-list');
+const summaryPanel = document.getElementById('summary-panel');
+const summaryTitle = document.getElementById('summary-title');
+const summaryMeta  = document.getElementById('summary-meta');
+const summaryStats = document.getElementById('summary-stats');
+const summaryStream= document.getElementById('summary-stream');
+const summaryInsights = document.getElementById('summary-insights');
+const summaryTagsEl   = document.getElementById('summary-tags');
+const holoStatus      = document.getElementById('holo-status');
+const aimHint         = document.getElementById('aim-hint');
+
+let hologramOpen = false;
+let streamRAF = null;
+let streamTimer = null;
+
+function buildVideoList() {
+  videoListEl.innerHTML = VIDEOS.map((v) => `
+    <li class="video-item" data-id="${v.id}">
+      <div class="video-thumb" style="background: linear-gradient(135deg, ${v.grad[0]}, ${v.grad[1]})">
+        <span class="thumb-icon">${v.icon}</span>
+        <span class="thumb-duration">${v.duration}</span>
+      </div>
+      <div class="video-meta">
+        <div class="video-title">${escHtml(v.title)}</div>
+        <div class="video-sub">Knowledge Estate · ${v.duration}</div>
+      </div>
+      <div class="video-arrow">›</div>
+    </li>
+  `).join('');
+  videoListEl.querySelectorAll('.video-item').forEach((el) => {
+    el.addEventListener('click', () => selectVideo(el.dataset.id));
+  });
+}
+
+function selectVideo(id) {
+  const v = VIDEOS.find((x) => x.id === id);
+  if (!v) return;
+  videoListEl.querySelectorAll('.video-item').forEach((el) => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+  holoStatus.textContent = `選択中：${v.title}`;
+
+  const seed = hashSeed(v.id);
+  const focus   = 62 + (seed % 36);
+  const memory  = 58 + ((seed >> 3) % 40);
+  const reward  = 55 + ((seed >> 6) % 43);
+  const insight = 60 + ((seed >> 9) % 38);
+
+  summaryTitle.textContent = v.title;
+  summaryMeta.textContent  = `Video ID — ${v.id} · Duration ${v.duration}`;
+  summaryStats.innerHTML = [
+    ['Focus 集中度',   focus],
+    ['Memory 記憶定着', memory],
+    ['Reward 報酬系',  reward],
+    ['Insight 洞察度', insight]
+  ].map(([label, val]) => `
+    <div class="stat">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${val}</div>
+      <div class="stat-bar"><span style="width:${val}%"></span></div>
+    </div>
+  `).join('');
+
+  const insights = shuffle(INSIGHTS_POOL, seed).slice(0, 4);
+  summaryInsights.innerHTML = insights.map((t, i) => `
+    <li style="animation-delay:${0.15 + i * 0.12}s">${escHtml(t)}</li>
+  `).join('');
+
+  const tags = shuffle(TAGS_POOL, seed >> 2).slice(0, 5);
+  summaryTagsEl.innerHTML = tags.map((t) => `<span class="tag">${escHtml(t)}</span>`).join('');
+
+  summaryPanel.hidden = false;
+  streamSummary(pick(SUMMARY_POOL, seed));
+}
+
+function streamSummary(text) {
+  cancelAnimationFrame(streamRAF);
+  clearTimeout(streamTimer);
+  summaryStream.classList.remove('done');
+  summaryStream.textContent = '';
+  let i = 0;
+  let last = performance.now();
+  function step(now) {
+    const dt = now - last;
+    if (dt >= 22) {
+      const burst = Math.max(1, Math.floor(dt / 22));
+      summaryStream.textContent += text.slice(i, i + burst);
+      i += burst;
+      last = now;
+    }
+    if (i < text.length) {
+      streamRAF = requestAnimationFrame(step);
+    } else {
+      summaryStream.classList.add('done');
+    }
+  }
+  streamRAF = requestAnimationFrame(step);
+}
+
+function lookedAtBookshelf() {
+  if (!placedFurniture.length) return null;
+  raycaster.setFromCamera(screenCenter, camera);
+  const meshes = [];
+  for (const f of placedFurniture) {
+    if (f.userData.type !== 'bookshelf') continue;
+    f.traverse((c) => { if (c.isMesh) meshes.push(c); });
+  }
+  if (!meshes.length) return null;
+  const hits = raycaster.intersectObjects(meshes);
+  if (!hits.length) return null;
+  if (hits[0].distance > 4.5) return null;
+  let obj = hits[0].object;
+  while (obj && !obj.userData.isFurniture) obj = obj.parent;
+  return obj || null;
+}
+
+function updateAimHint() {
+  if (mode !== 'walk' || !controls.isLocked || hologramOpen) {
+    aimHint.hidden = true;
+    return;
+  }
+  aimHint.hidden = !lookedAtBookshelf();
+}
+
+function openHologram() {
+  if (hologramOpen) return;
+  hologramOpen = true;
+  buildVideoList();
+  summaryPanel.hidden = true;
+  summaryStream.textContent = '';
+  summaryInsights.innerHTML = '';
+  summaryTagsEl.innerHTML = '';
+  summaryStats.innerHTML = '';
+  summaryTitle.textContent = '';
+  summaryMeta.textContent = '';
+  holoStatus.textContent = '動画を選択してください';
+
+  if (controls.isLocked) {
+    suppressPauseOverlay = true;
+    controls.unlock();
+  }
+  document.body.classList.add('hologram-open');
+  hologramEl.hidden = false;
+}
+
+function closeHologram() {
+  if (!hologramOpen) return;
+  hologramOpen = false;
+  cancelAnimationFrame(streamRAF);
+  hologramEl.hidden = true;
+  document.body.classList.remove('hologram-open');
+  if (firstLockDone && mode === 'walk') controls.lock();
+}
+
+document.getElementById('holo-close').addEventListener('click', closeHologram);
+hologramEl.addEventListener('click', (e) => {
+  if (e.target === hologramEl || e.target.classList.contains('holo-stage')) closeHologram();
+});
+
 // ---------- Animate ----------
 const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   updateMovement(dt);
   updateHighlight();
-  // gentle accent pulse
+  updateAimHint();
   accent.intensity = 1.2 + Math.sin(performance.now() * 0.0015) * 0.25;
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
