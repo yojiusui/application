@@ -148,6 +148,8 @@ document.getElementById('start-btn').addEventListener('click', () => controls.lo
 document.getElementById('resume-btn').addEventListener('click', () => controls.lock());
 
 let firstLockDone = false;
+let mode = 'walk';
+let suppressPauseOverlay = false;
 controls.addEventListener('lock', () => {
   startOverlay.hidden = true;
   pauseOverlay.hidden = true;
@@ -156,12 +158,21 @@ controls.addEventListener('lock', () => {
 });
 controls.addEventListener('unlock', () => {
   document.body.classList.remove('locked');
-  if (firstLockDone) pauseOverlay.hidden = false;
+  if (firstLockDone && !suppressPauseOverlay && mode === 'walk') {
+    pauseOverlay.hidden = false;
+  }
+  suppressPauseOverlay = false;
 });
 
 // ---------- Movement ----------
 const keys = Object.create(null);
-document.addEventListener('keydown', (e) => { keys[e.code] = true; });
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'KeyB' && startOverlay.hidden) {
+    e.preventDefault();
+    setMode(mode === 'walk' ? 'build' : 'walk');
+  }
+});
 document.addEventListener('keyup',   (e) => { keys[e.code] = false; });
 
 const SPEED = 4.5;
@@ -289,6 +300,56 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// ---------- Mode toggle (walk / build) ----------
+const modeLabel    = document.getElementById('mode-label');
+const modeKeys     = document.getElementById('mode-keys');
+const selectionInfo = document.getElementById('selection-info');
+
+const FURNITURE_NAMES = {
+  bookshelf: '本棚',
+  desk:      'デスク',
+  sofa:      'ソファ',
+  plant:     '観葉植物'
+};
+let selectedFurniture = null;
+
+function setMode(next) {
+  if (next === mode) return;
+  mode = next;
+  if (mode === 'build') {
+    document.body.classList.remove('walk-mode');
+    document.body.classList.add('build-mode');
+    modeLabel.textContent = 'Build Mode';
+    modeKeys.textContent  = '家具を選んで配置 / B で歩行に戻る';
+    if (controls.isLocked) {
+      suppressPauseOverlay = true;
+      controls.unlock();
+    }
+  } else {
+    document.body.classList.remove('build-mode');
+    document.body.classList.add('walk-mode');
+    modeLabel.textContent = 'Walk Mode';
+    modeKeys.textContent  = 'WASD移動 / Mouse視点 / 左クリックで設置 / B でビルド';
+    if (firstLockDone) controls.lock();
+  }
+}
+
+document.querySelectorAll('.cat-item').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.item;
+    selectedFurniture = id;
+    document.querySelectorAll('.cat-item').forEach((b) => {
+      b.classList.toggle('active', b === btn);
+    });
+    const name = FURNITURE_NAMES[id] ?? id;
+    selectionInfo.textContent = `選択中：${name}`;
+    selectionInfo.classList.add('has-selection');
+    console.log(`選択中：${name}`);
+  });
+});
+
+document.getElementById('exit-build-btn')?.addEventListener('click', () => setMode('walk'));
 
 // ---------- Animate ----------
 const clock = new THREE.Clock();

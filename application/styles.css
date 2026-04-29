@@ -451,22 +451,8 @@ body.build-mode {
 }
 
 body.build-mode #scene {
-  cursor: crosshair;
+  cursor: default;
 }
-
-body.build-mode #mode-label::before {
-  content: "Build Mode";
-}
-
-body.build-mode #mode-label { font-size: 0; }
-body.build-mode #mode-label::before { font-size: 1rem; }
-
-body.build-mode #mode-keys::before {
-  content: "クリックで設置 / R 回転 / Del 削除 / B で歩行";
-}
-
-body.build-mode #mode-keys { font-size: 0; }
-body.build-mode #mode-keys::before { font-size: 0.72rem; color: var(--text-mute); letter-spacing: 0.1em; }
 
 /* Toast notification */
 .toast {
