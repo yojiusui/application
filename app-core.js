@@ -216,36 +216,14 @@ const migrateSkip    = document.getElementById('migrateSkipBtn');
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function render() {
-  seedsContainer.innerHTML = '';
   const seeds    = state.seeds;
   const dueCount = seeds.filter(isDueToday).length;
 
   emptyState.hidden = seeds.length > 0;
 
-  seeds.forEach(seed => {
-    const due = isDueToday(seed);
-    const el  = document.createElement('div');
-    el.className  = 'seed' + (filterDueOnly && !due ? ' dimmed' : '');
-    el.dataset.id = seed.id;
-    el.style.left = seed.x + '%';
-    el.style.top  = seed.y + '%';
-
-    const body = document.createElement('div');
-    const cls  = ['seed-body'];
-    if (due)                    cls.push('due');
-    if (seed.srRepetitions > 0) cls.push('reviewed');
-    body.className   = cls.join(' ');
-    body.textContent = seed.emoji;
-
-    const label = document.createElement('div');
-    label.className   = 'seed-label';
-    label.textContent = seed.title || '無題';
-
-    el.appendChild(body);
-    el.appendChild(label);
-    el.addEventListener('click', () => openSeedModal(seed.id));
-    seedsContainer.appendChild(el);
-  });
+  // 3D layer (app-3d.js) owns the visual representation now;
+  // the legacy DOM container stays cleared and hidden.
+  if (seedsContainer) seedsContainer.innerHTML = '';
 
   statTotal.textContent   = seeds.length;
   statDue.textContent     = dueCount;
@@ -253,6 +231,10 @@ function render() {
   filterBadge.textContent = dueCount;
   filterBadge.hidden      = dueCount === 0;
   filterDueBtn.classList.toggle('active', filterDueOnly);
+
+  if (typeof window.render3D === 'function') {
+    window.render3D(seeds, { filterDueOnly });
+  }
 }
 
 // ─── Emoji Grid ───────────────────────────────────────────────────────────────

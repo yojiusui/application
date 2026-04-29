@@ -200,6 +200,223 @@ function init() {
     camera.position.z = Math.max(-half, Math.min(half, camera.position.z));
   }
 
+  // ---------- Seeds (orbs by category) ----------
+  // Materials shared across all orb instances (cheap; ~20 orbs typical).
+  const ORB_MAT = {
+    bookCover: new THREE.MeshStandardMaterial({ color: 0x6b3a2e, roughness: 0.6, metalness: 0.1 }),
+    bookPage:  new THREE.MeshStandardMaterial({ color: 0xf2e4c0, roughness: 0.85 }),
+    bookGold:  new THREE.MeshStandardMaterial({ color: 0xd4af7a, roughness: 0.4,  metalness: 0.65, emissive: 0x3a2810, emissiveIntensity: 0.4 }),
+    bulbGlass: new THREE.MeshStandardMaterial({ color: 0xfff2c4, roughness: 0.2,  metalness: 0.0, transparent: true, opacity: 0.85, emissive: 0xffd58a, emissiveIntensity: 1.4 }),
+    bulbBase:  new THREE.MeshStandardMaterial({ color: 0xb89968, roughness: 0.45, metalness: 0.7 }),
+    crystal:   new THREE.MeshStandardMaterial({ color: 0x9a8aff, roughness: 0.25, metalness: 0.6, emissive: 0x4a3aaa, emissiveIntensity: 0.55, transparent: true, opacity: 0.92 }),
+    rocketHull:new THREE.MeshStandardMaterial({ color: 0xeae0d0, roughness: 0.45, metalness: 0.3 }),
+    rocketTip: new THREE.MeshStandardMaterial({ color: 0xc94a4a, roughness: 0.55, metalness: 0.1, emissive: 0x6a1a1a, emissiveIntensity: 0.35 }),
+    rocketFin: new THREE.MeshStandardMaterial({ color: 0x4a4a5e, roughness: 0.6,  metalness: 0.4 }),
+    rocketGlow:new THREE.MeshStandardMaterial({ color: 0xffd58a, emissive: 0xffd58a, emissiveIntensity: 1.5, transparent: true, opacity: 0.7 }),
+    insight:   new THREE.MeshStandardMaterial({ color: 0xffd58a, roughness: 0.35, metalness: 0.55, emissive: 0xd4af7a, emissiveIntensity: 0.85 })
+  };
+
+  function makeBookOrb() {
+    const g = new THREE.Group();
+    const cover = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.12), ORB_MAT.bookCover);
+    const pages = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.65, 0.13), ORB_MAT.bookPage);
+    pages.position.z = 0.001;
+    const trim  = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.13), ORB_MAT.bookGold);
+    trim.position.y = 0.32;
+    const trim2 = trim.clone(); trim2.position.y = -0.32;
+    g.add(cover, pages, trim, trim2);
+    g.rotation.set(-0.25, 0.45, 0.0);
+    return g;
+  }
+
+  function makeIdeaOrb() {
+    const g = new THREE.Group();
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 22, 18), ORB_MAT.bulbGlass);
+    bulb.position.y = 0.08;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.16, 16), ORB_MAT.bulbBase);
+    neck.position.y = -0.22;
+    const cap  = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 16), ORB_MAT.bulbBase);
+    cap.position.y = -0.32;
+    g.add(bulb, neck, cap);
+    // Inner light source — small, cheap point light per idea seed
+    const inner = new THREE.PointLight(0xffd58a, 0.9, 4, 2);
+    inner.position.y = 0.08;
+    g.add(inner);
+    return g;
+  }
+
+  function makeLearningOrb() {
+    const g = new THREE.Group();
+    const a = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), ORB_MAT.crystal);
+    a.scale.set(1, 1.4, 1);
+    g.add(a);
+    const b = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), ORB_MAT.crystal);
+    b.position.set(0.18, -0.2, 0.15);
+    b.scale.set(0.8, 1.1, 0.8);
+    g.add(b);
+    return g;
+  }
+
+  function makeProjectOrb() {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.7, 18), ORB_MAT.rocketHull);
+    body.position.y = 0.0;
+    const tip  = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.32, 18), ORB_MAT.rocketTip);
+    tip.position.y = 0.51;
+    const win  = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), ORB_MAT.crystal);
+    win.position.set(0, 0.12, 0.18);
+    const finGeo = new THREE.BoxGeometry(0.04, 0.18, 0.18);
+    const fA = new THREE.Mesh(finGeo, ORB_MAT.rocketFin); fA.position.set( 0.18, -0.32, 0);
+    const fB = new THREE.Mesh(finGeo, ORB_MAT.rocketFin); fB.position.set(-0.18, -0.32, 0);
+    const fC = new THREE.Mesh(finGeo, ORB_MAT.rocketFin); fC.position.set(0, -0.32,  0.18); fC.rotation.y = Math.PI / 2;
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.32, 14), ORB_MAT.rocketGlow);
+    flame.position.y = -0.5; flame.rotation.x = Math.PI;
+    g.add(body, tip, win, fA, fB, fC, flame);
+    g.rotation.x = -0.18;
+    return g;
+  }
+
+  function makeInsightOrb() {
+    const g = new THREE.Group();
+    const star = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), ORB_MAT.insight);
+    g.add(star);
+    return g;
+  }
+
+  function makeOrbForCategory(category) {
+    switch (category) {
+      case 'book':     return makeBookOrb();
+      case 'idea':     return makeIdeaOrb();
+      case 'learning': return makeLearningOrb();
+      case 'project':  return makeProjectOrb();
+      case 'insight':  return makeInsightOrb();
+      default:         return makeBookOrb();
+    }
+  }
+
+  // Halo disc that sits beneath the orb — fades / brightens with state.
+  const HALO_GEO = new THREE.RingGeometry(0.55, 0.7, 32);
+  const HALO_MAT_BASE = new THREE.MeshBasicMaterial({
+    color: 0xd4af7a, transparent: true, opacity: 0.28,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+  const HALO_MAT_DUE  = new THREE.MeshBasicMaterial({
+    color: 0xff8a8a, transparent: true, opacity: 0.42,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+
+  const seedRoot = new THREE.Group();
+  scene.add(seedRoot);
+  const seedMap = new Map();          // seed.id -> entry
+  const seedClickTargets = [];        // mesh array for raycast (rebuilt on change)
+
+  function buildSeedEntry(seed) {
+    // wrap stays anchored at floor (y = 0) for stable x/z positioning
+    // and to keep the halo on the ground regardless of orb bobbing.
+    const wrap = new THREE.Group();
+    wrap.userData.seedId = seed.id;
+    wrap.userData.phase  = Math.random() * Math.PI * 2;
+
+    const orb = makeOrbForCategory(seed.category);
+    orb.position.y = 1.4; // bob target; animated each frame
+    orb.traverse((c) => {
+      if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; c.userData.seedId = seed.id; }
+    });
+    wrap.add(orb);
+
+    const halo = new THREE.Mesh(HALO_GEO, HALO_MAT_BASE);
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.y = 0.02; // hovers just above the ground plane
+    wrap.add(halo);
+
+    return { wrap, orb, halo, type: seed.category };
+  }
+
+  function refreshClickTargets() {
+    seedClickTargets.length = 0;
+    seedRoot.traverse((c) => { if (c.isMesh && c.userData.seedId) seedClickTargets.push(c); });
+  }
+
+  function disposeEntry(entry) {
+    seedRoot.remove(entry.wrap);
+    entry.wrap.traverse((c) => {
+      if (c.isMesh && c.geometry && c.geometry !== HALO_GEO) c.geometry.dispose();
+    });
+  }
+
+  // Public hook called by app-core.js render()
+  window.render3D = function (seeds /*, opts */) {
+    const seen = new Set();
+    for (const seed of seeds) {
+      seen.add(seed.id);
+      let entry = seedMap.get(seed.id);
+      if (!entry) {
+        entry = buildSeedEntry(seed);
+        seedRoot.add(entry.wrap);
+        seedMap.set(seed.id, entry);
+      } else if (entry.type !== seed.category) {
+        disposeEntry(entry);
+        entry = buildSeedEntry(seed);
+        seedRoot.add(entry.wrap);
+        seedMap.set(seed.id, entry);
+      }
+      // 2D% → 3D world position (centered on origin, 1m grid units)
+      entry.wrap.position.x = (seed.x - 50) * 0.4;
+      entry.wrap.position.z = (seed.y - 50) * 0.4;
+
+      const due = typeof window.isDueToday === 'function' && window.isDueToday(seed);
+      entry.halo.material = due ? HALO_MAT_DUE : HALO_MAT_BASE;
+    }
+    // Remove deleted seeds
+    for (const [id, entry] of seedMap) {
+      if (!seen.has(id)) {
+        disposeEntry(entry);
+        seedMap.delete(id);
+      }
+    }
+    refreshClickTargets();
+  };
+
+  // ---------- Click → open seed modal ----------
+  const raycaster    = new THREE.Raycaster();
+  const screenCenter = new THREE.Vector2(0, 0);
+
+  document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (!controls.isLocked) return; // ignore clicks while paused / on overlays
+    if (!seedClickTargets.length) return;
+
+    raycaster.setFromCamera(screenCenter, camera);
+    const hits = raycaster.intersectObjects(seedClickTargets, false);
+    if (!hits.length) return;
+    if (hits[0].distance > 25) return;
+
+    let obj = hits[0].object;
+    while (obj && !obj.userData.seedId) obj = obj.parent;
+    if (!obj) return;
+
+    const id = obj.userData.seedId;
+    if (typeof window.openSeedModal === 'function') {
+      // Open modal first so the unlock handler sees a modal already open
+      // and skips showing the pause overlay.
+      window.openSeedModal(id);
+      controls.unlock();
+    }
+  });
+
+  // ---------- Modal close → restore pause overlay ----------
+  // After the user closes a seed modal, the pointer is still unlocked
+  // and no overlay is visible. Watch for any modal becoming hidden again
+  // and re-show the pause card so the user has a clear path back.
+  const modalObserver = new MutationObserver(() => {
+    if (firstLockDone && !controls.isLocked && !anyModalOpen() && pauseOverlay && pauseOverlay.hidden) {
+      pauseOverlay.hidden = false;
+    }
+  });
+  document.querySelectorAll('.modal-overlay').forEach((m) => {
+    modalObserver.observe(m, { attributes: true, attributeFilter: ['hidden'] });
+  });
+
   // ---------- Resize ----------
   function getAspect() {
     const w = canvas.clientWidth  || window.innerWidth;
@@ -221,14 +438,30 @@ function init() {
 
   // ---------- Animate ----------
   const clock = new THREE.Clock();
+  function animateOrbs(t) {
+    for (const entry of seedMap.values()) {
+      const phase = entry.wrap.userData.phase || 0;
+      entry.orb.position.y = 1.4 + Math.sin(t * 1.4 + phase) * 0.08;
+      entry.orb.rotation.y = t * 0.4 + phase;
+    }
+  }
+
   function animate() {
     const dt = Math.min(clock.getDelta(), 0.1);
+    const t  = performance.now() * 0.001;
     updateMovement(dt);
-    accent.intensity = 1.2 + Math.sin(performance.now() * 0.0015) * 0.25;
+    animateOrbs(t);
+    accent.intensity = 1.2 + Math.sin(t * 1.5) * 0.25;
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
   }
   animate();
+
+  // Seeds that loaded before this module initialized are now visible —
+  // ask app-core.js to re-render so window.render3D gets called.
+  if (typeof window.render === 'function') {
+    try { window.render(); } catch { /* boot order edge cases — ignore */ }
+  }
 }
 
 // ---------- Helpers ----------
