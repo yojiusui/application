@@ -44,6 +44,16 @@
 
   <!-- Supabase JS — cloud sync & auth (loaded before app scripts) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Three.js for 3D estate scene -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
 
@@ -90,16 +100,106 @@
     </div>
   </header>
 
-  <!-- ===== ROOM ===== -->
+  <!-- ===== 3D ROOM ===== -->
   <main class="room" id="room">
-    <div class="room-floor"></div>
-    <div class="live2d-placeholder" aria-hidden="true"><span>Character</span></div>
+    <canvas id="scene-canvas"></canvas>
+    <div class="seeds-container" id="seedsContainer" hidden></div>
     <div class="char-bubble" id="characterBubble"></div>
-    <div class="seeds-container" id="seedsContainer"></div>
+
+    <!-- 3D HUD overlays -->
+    <div class="hud-3d crosshair-3d" id="crosshair3d"></div>
+
+    <div class="hud-3d mode-pill" id="modePill">
+      <span id="modeLabel">Walk</span>
+      <span class="mode-keys" id="modeKeys">WASD移動 / マウス視点 / B でビルド</span>
+    </div>
+
+    <div class="hud-3d key-strip" id="keyStrip">
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動</span>
+      <span><kbd>Shift</kbd> ダッシュ</span>
+      <span><kbd>B</kbd> ビルド</span>
+      <span><kbd>R</kbd> 回転</span>
+      <span><kbd>Esc</kbd> 一時停止</span>
+    </div>
+
+    <!-- Furniture catalog (build mode) -->
+    <aside class="build-panel" id="buildPanel" aria-hidden="true">
+      <header>
+        <h2>Furniture</h2>
+        <span class="hint">家具を選んで配置</span>
+      </header>
+      <section class="panel-section">
+        <h3>カタログ</h3>
+        <div class="catalog" id="furnitureCatalog">
+          <button class="cat-item" data-item="bookshelf" type="button">
+            <svg class="cat-icon" viewBox="0 0 32 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+              <rect x="4" y="3" width="24" height="34" rx="1.5"/>
+              <line x1="4" y1="13" x2="28" y2="13"/>
+              <line x1="4" y1="22" x2="28" y2="22"/>
+              <line x1="4" y1="30" x2="28" y2="30"/>
+            </svg>
+            <span>本棚</span>
+          </button>
+          <button class="cat-item" data-item="desk" type="button">
+            <svg class="cat-icon" viewBox="0 0 36 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+              <rect x="3" y="10" width="30" height="3" rx="0.5"/>
+              <line x1="6" y1="14" x2="6" y2="28"/>
+              <line x1="30" y1="14" x2="30" y2="28"/>
+              <rect x="9" y="16" width="13" height="6" rx="0.5"/>
+            </svg>
+            <span>デスク</span>
+          </button>
+          <button class="cat-item" data-item="sofa" type="button">
+            <svg class="cat-icon" viewBox="0 0 40 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+              <path d="M5 22 L5 12 Q5 9 8 9 L32 9 Q35 9 35 12 L35 22"/>
+              <rect x="5" y="20" width="30" height="6" rx="1.5"/>
+              <line x1="9" y1="14" x2="9" y2="20"/>
+              <line x1="31" y1="14" x2="31" y2="20"/>
+            </svg>
+            <span>ソファ</span>
+          </button>
+          <button class="cat-item" data-item="plant" type="button">
+            <svg class="cat-icon" viewBox="0 0 32 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+              <path d="M16 24 Q9 18 8 10 Q14 12 16 20"/>
+              <path d="M16 24 Q23 18 24 10 Q18 12 16 20"/>
+              <path d="M16 24 L16 30"/>
+              <path d="M10 30 L22 30 L20 36 L12 36 Z"/>
+            </svg>
+            <span>観葉植物</span>
+          </button>
+        </div>
+      </section>
+      <section class="panel-section">
+        <h3>選択中</h3>
+        <div class="selection-info" id="furnitureSelectionInfo">家具を選んでください</div>
+      </section>
+      <section class="panel-section">
+        <button class="ghost-btn" id="exitBuildBtn" type="button">歩行に戻る (B)</button>
+      </section>
+    </aside>
+
     <div class="empty-state" id="emptyState" hidden>
       <p class="empty-icon">🌱</p>
-      <p class="empty-text">部屋に知識の種を<br>配置しましょう</p>
+      <p class="empty-text">邸宅に知識の種を<br>配置しましょう</p>
       <button class="btn-primary" id="emptyAddBtn">最初の種を置く</button>
+    </div>
+
+    <!-- Walk start / pause overlays -->
+    <div class="walk-overlay" id="walkStartOverlay">
+      <div class="walk-overlay-card">
+        <p class="walk-eyebrow">Welcome to the Estate</p>
+        <h2>歩いて知識の館を巡ろう</h2>
+        <p class="walk-desc">クリックで一人称視点に入ります。<br/>WASD で移動、マウスで見渡し、B でビルドモードへ。</p>
+        <button class="btn-primary" id="walkStartBtn">館に入る</button>
+      </div>
+    </div>
+
+    <div class="walk-overlay subtle" id="walkPauseOverlay" hidden>
+      <div class="walk-overlay-card sm">
+        <h2>一時停止</h2>
+        <p>クリックすると歩行を再開します。</p>
+        <button class="btn-primary" id="walkResumeBtn">再開</button>
+      </div>
     </div>
   </main>
 
@@ -373,6 +473,9 @@
   <script src="app-features.js"></script>
   <script src="app-auth.js"></script>
   <script src="app.js"></script>
+
+  <!-- 3D scene module — loads after global scripts; exposes window.render3D / window.applyTheme3D -->
+  <script type="module" src="app-3d.js"></script>
 
   <!-- Service Worker registration -->
   <script>
