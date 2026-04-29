@@ -3,118 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Knowledge Estate — YouTube脳科学解析</title>
+  <title>Knowledge Estate — あなたの知の館</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
-<body>
-  <div class="ambient-glow glow-1"></div>
-  <div class="ambient-glow glow-2"></div>
-  <div class="ambient-glow glow-3"></div>
+<body class="walk-mode">
+  <canvas id="scene"></canvas>
 
-  <header class="site-header">
-    <div class="brand">
-      <div class="brand-mark">
-        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 3 L28 10 L28 22 L16 29 L4 22 L4 10 Z" stroke="url(#g1)" stroke-width="1.5" />
-          <path d="M16 11 L22 14.5 L22 21 L16 24.5 L10 21 L10 14.5 Z" stroke="url(#g1)" stroke-width="1" opacity="0.6" />
-          <defs>
-            <linearGradient id="g1" x1="0" y1="0" x2="32" y2="32">
-              <stop offset="0%" stop-color="#d4af7a" />
-              <stop offset="100%" stop-color="#7a5cff" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <h1>Knowledge Estate</h1>
-        <span class="tagline">Neuroscientific Insight for Curious Minds</span>
-      </div>
+  <div class="hud brand-hud">
+    <span class="brand-mark-mini"></span>
+    <span class="brand-name">Knowledge Estate</span>
+  </div>
+
+  <div class="hud mode-hud">
+    <span id="mode-label">Walk Mode</span>
+    <span class="mode-keys">WASD移動 / Mouse視点 / 左クリックで設置 / 右クリックで撤去</span>
+  </div>
+
+  <div class="crosshair" id="crosshair"></div>
+
+  <div class="hud key-hud">
+    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動</span>
+    <span><kbd>Shift</kbd> ダッシュ</span>
+    <span><kbd>L-Click</kbd> 基礎を置く</span>
+    <span><kbd>R-Click</kbd> 撤去</span>
+    <span><kbd>Esc</kbd> 一時停止</span>
+  </div>
+
+  <div class="overlay" id="start-overlay">
+    <div class="overlay-card">
+      <span class="eyebrow">Welcome to your estate</span>
+      <h1>Knowledge Estate</h1>
+      <p>あなたの「知の館」へようこそ。<br/>一人称視点で歩き回り、グリッドの上に部屋の基礎を置いていきましょう。</p>
+      <ul class="control-list">
+        <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動</li>
+        <li><kbd>Mouse</kbd> 視点</li>
+        <li><kbd>Shift</kbd> ダッシュ</li>
+        <li><kbd>Click</kbd> 基礎を置く</li>
+      </ul>
+      <button class="primary-btn lg" id="start-btn">館に入る</button>
     </div>
-    <nav class="top-nav">
-      <a href="#analyzer">解析</a>
-      <a href="#features">特徴</a>
-      <a href="#about">概要</a>
-    </nav>
-  </header>
+  </div>
 
-  <main>
-    <section class="hero">
-      <span class="eyebrow">— Premium Neuro Analysis —</span>
-      <h2>知の資産を、<br />脳科学の眼差しで読み解く。</h2>
-      <p class="hero-lead">
-        YouTube動画のURLを入力するだけで、認知神経科学の視点からコンテンツを解析。<br />
-        集中・記憶・報酬系への作用を可視化し、あなたの「学び」を上質な資産へと変えます。
-      </p>
-    </section>
+  <div class="overlay subtle" id="pause-overlay" hidden>
+    <div class="overlay-card sm">
+      <h2>一時停止</h2>
+      <p>クリックすると歩行を再開します。</p>
+      <button class="primary-btn" id="resume-btn">再開</button>
+    </div>
+  </div>
 
-    <section id="analyzer" class="analyzer-card glass">
-      <div class="card-header">
-        <span class="status-dot"></span>
-        <h3>YouTube URL Analyzer</h3>
-      </div>
-
-      <form id="analyze-form" class="analyze-form" autocomplete="off">
-        <label for="youtube-url" class="visually-hidden">YouTube URL</label>
-        <div class="input-wrap">
-          <svg class="input-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M21.6 7.2a2.5 2.5 0 0 0-1.76-1.77C18.25 5 12 5 12 5s-6.25 0-7.84.43A2.5 2.5 0 0 0 2.4 7.2 26 26 0 0 0 2 12a26 26 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.76 1.77C5.75 19 12 19 12 19s6.25 0 7.84-.43a2.5 2.5 0 0 0 1.76-1.77A26 26 0 0 0 22 12a26 26 0 0 0-.4-4.8Z" stroke="currentColor" stroke-width="1.4"/>
-            <path d="m10 15 5-3-5-3v6Z" fill="currentColor"/>
-          </svg>
-          <input
-            id="youtube-url"
-            name="youtube-url"
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=..."
-            required
-          />
-        </div>
-        <button type="submit" id="analyze-btn">
-          <span class="btn-label">解析する</span>
-          <svg class="btn-arrow" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </form>
-
-      <p class="hint">※ デモとして、入力されたURLに基づくシミュレーション結果を表示します。</p>
-    </section>
-
-    <section id="result-section" class="result-section" aria-live="polite"></section>
-
-    <section id="features" class="features">
-      <article class="feature glass">
-        <div class="feature-icon">◆</div>
-        <h4>Cognitive Mapping</h4>
-        <p>動画の構造を前頭前野の処理負荷として可視化し、学習効率を数値化します。</p>
-      </article>
-      <article class="feature glass">
-        <div class="feature-icon">✦</div>
-        <h4>Dopamine Profile</h4>
-        <p>報酬系を刺激する瞬間を抽出。視聴習慣の質を高める分析を提供します。</p>
-      </article>
-      <article class="feature glass">
-        <div class="feature-icon">❖</div>
-        <h4>Memory Anchor</h4>
-        <p>長期記憶への定着が期待されるキーフレーズを抽出し、知識資産化を支援します。</p>
-      </article>
-    </section>
-
-    <section id="about" class="about glass">
-      <h3>About Knowledge Estate</h3>
-      <p>
-        Knowledge Estate は、動画コンテンツを「知の資産（Estate）」として捉え直すための解析プラットフォームです。
-        神経科学の知見を基に設計された分析エンジン（シミュレーション）が、あなたの視聴体験を上質な学びへと昇華させます。
-      </p>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <span>© 2026 Knowledge Estate.  All insights reserved.</span>
-  </footer>
-
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

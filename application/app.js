@@ -1,152 +1,304 @@
-(() => {
-  const form = document.getElementById('analyze-form');
-  const input = document.getElementById('youtube-url');
-  const btn = document.getElementById('analyze-btn');
-  const resultSection = document.getElementById('result-section');
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-  const SUMMARIES = [
-    "本動画は、視聴者の前頭前野を継続的に刺激する構成で設計されています。導入部で扁桃体への軽微な情動アクセスを行い、注意のスポットライトを獲得した後、ワーキングメモリへの段階的な情報投下によって理解の足場を構築。中盤では報酬予測誤差を意図的に発生させることでドーパミン放出を促し、長期記憶への定着を図る、極めて洗練された認知設計が認められます。",
-    "解析結果から、本コンテンツは「分散学習効果」を最大化する時間設計を採用していることが示唆されます。約7〜9分間隔で挿入される視覚的アンカーがデフォルト・モード・ネットワークの暴走を抑制し、能動的注意を維持。海馬と新皮質の同期発火を促進する構成により、視聴後24時間の保持率が一般的な動画より約32%高いと推定されます。",
-    "本動画はミラーニューロン系の活性化に長けており、視聴者の共感的理解を強く誘発します。話者の身振り・声調の微細な変化が前帯状皮質を継続的に刺激し、社会的認知ネットワークの活動を高める結果、抽象概念の自分事化が促進されます。学習というより「経験」として記憶される傾向が強い、上質な知的コンテンツです。",
-    "認知負荷理論の観点から見ると、本動画は内在的負荷を低く抑えつつ、関連的負荷を適切に高める優れたバランスを保っています。背外側前頭前皮質の働きを過剰に圧迫せず、メタ認知の発動余地を残す構成は、長時間視聴でも疲労を感じさせません。学習継続性の高い、戦略的に設計された情報体験です。"
-  ];
+// ---------- Constants ----------
+const TILE = 2;
+const PLAYER_HEIGHT = 1.6;
+const WORLD_SIZE = 200;
+const GRID_SIZE = 100;
 
-  const INSIGHTS_POOL = [
-    "導入30秒で扁桃体反応を誘発し、注意リソースを優先確保している",
-    "報酬予測誤差を中盤で意図的に発生させ、ドーパミン放出を促進",
-    "視覚的・聴覚的キューを同期させ、感覚統合野の処理効率を向上",
-    "復唱と要約の挿入により、海馬の記憶固定化プロセスを支援",
-    "メタファー使用率が高く、右半球の連合野を活発に動員している",
-    "視点切り替えの間隔がデフォルト・モード・ネットワークの活性化を抑制",
-    "感情価の振幅が適度で、扁桃体−前頭前野の結合性を高める設計",
-    "終盤で意図的な「未完結性」を残し、ツァイガルニク効果による反芻を誘発"
-  ];
+// ---------- Scene ----------
+const canvas = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x14122a, 30, 140);
 
-  const TAGS_POOL = [
-    "前頭前野", "海馬", "ドーパミン報酬系", "ミラーニューロン",
-    "ワーキングメモリ", "デフォルト・モード・ネットワーク", "扁桃体",
-    "メタ認知", "認知的柔軟性", "情動記憶", "感覚統合", "注意ネットワーク"
-  ];
+const camera = new THREE.PerspectiveCamera(
+  72,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  500
+);
+camera.position.set(0, PLAYER_HEIGHT, 6);
 
-  const extractVideoId = (url) => {
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/,
-      /[?&]v=([A-Za-z0-9_-]{6,})/
-    ];
-    for (const p of patterns) {
-      const m = url.match(p);
-      if (m) return m[1].slice(0, 11);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+// ---------- Sky ----------
+const skyGeo = new THREE.SphereGeometry(260, 32, 16);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: {
+    topColor:    { value: new THREE.Color(0x070612) },
+    midColor:    { value: new THREE.Color(0x2a1f4a) },
+    bottomColor: { value: new THREE.Color(0x6a4a78) }
+  },
+  vertexShader: `
+    varying vec3 vWorld;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorld = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
     }
-    return null;
-  };
-
-  const hashSeed = (str) => {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = (h * 16777619) >>> 0;
+  `,
+  fragmentShader: `
+    uniform vec3 topColor;
+    uniform vec3 midColor;
+    uniform vec3 bottomColor;
+    varying vec3 vWorld;
+    void main() {
+      float h = normalize(vWorld).y;
+      vec3 col = h > 0.0
+        ? mix(midColor, topColor, pow(h, 0.55))
+        : mix(midColor, bottomColor, pow(-h, 0.7));
+      gl_FragColor = vec4(col, 1.0);
     }
-    return h;
-  };
+  `
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
 
-  const seededPick = (arr, seed) => arr[seed % arr.length];
+// Stars
+const starCount = 900;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const r = 240;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(Math.random()); // upper hemisphere
+  starPos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+  starPos[i * 3 + 1] = r * Math.cos(phi);
+  starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+}
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+  color: 0xe8d3a8,
+  size: 0.55,
+  transparent: true,
+  opacity: 0.75,
+  depthWrite: false
+})));
 
-  const seededShuffle = (arr, seed) => {
-    const a = [...arr];
-    let s = seed || 1;
-    for (let i = a.length - 1; i > 0; i--) {
-      s = (s * 9301 + 49297) % 233280;
-      const j = Math.floor((s / 233280) * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
+// ---------- Lights ----------
+scene.add(new THREE.HemisphereLight(0xc9b8ff, 0x2a1f3a, 0.55));
 
-  const buildLoading = () => {
-    resultSection.innerHTML = `
-      <div class="loading-card glass">
-        <div class="loading-orbit"></div>
-        <div class="loading-text">解析中</div>
-        <div class="loading-sub">
-          Neuroscientific engine is processing
-          <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-        </div>
-      </div>
-    `;
-  };
+const moonLight = new THREE.DirectionalLight(0xfff0d4, 1.0);
+moonLight.position.set(30, 50, 20);
+moonLight.castShadow = true;
+moonLight.shadow.mapSize.set(2048, 2048);
+moonLight.shadow.camera.left = -50;
+moonLight.shadow.camera.right = 50;
+moonLight.shadow.camera.top = 50;
+moonLight.shadow.camera.bottom = -50;
+moonLight.shadow.camera.near = 0.5;
+moonLight.shadow.camera.far = 200;
+moonLight.shadow.bias = -0.0008;
+scene.add(moonLight);
 
-  const buildResult = (url) => {
-    const videoId = extractVideoId(url) || 'unknown';
-    const seed = hashSeed(videoId + url);
+const accent = new THREE.PointLight(0xd4af7a, 1.4, 30, 2);
+accent.position.set(0, 4, 0);
+scene.add(accent);
 
-    const focus    = 62 + (seed % 36);
-    const memory   = 58 + ((seed >> 3) % 40);
-    const reward   = 55 + ((seed >> 6) % 43);
-    const insight  = 60 + ((seed >> 9) % 38);
+// ---------- Ground ----------
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x1c1830,
+  roughness: 0.95,
+  metalness: 0.0
+});
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE),
+  groundMat
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
 
-    const summary = seededPick(SUMMARIES, seed);
-    const insights = seededShuffle(INSIGHTS_POOL, seed).slice(0, 4);
-    const tags = seededShuffle(TAGS_POOL, seed >> 2).slice(0, 5);
+// ---------- Grid ----------
+const grid = new THREE.GridHelper(GRID_SIZE, GRID_SIZE / TILE, 0xd4af7a, 0x3a2e5e);
+grid.material.transparent = true;
+grid.material.opacity = 0.35;
+grid.position.y = 0.01;
+scene.add(grid);
 
-    resultSection.innerHTML = `
-      <article class="result-card glass">
-        <header class="result-head">
-          <div>
-            <h3>Neuroscientific Summary</h3>
-            <div class="result-id">Video ID — ${escapeHtml(videoId)}</div>
-          </div>
-          <div class="tag-row">
-            ${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
-          </div>
-        </header>
+// Highlight tile (where the player is aiming)
+const highlightGeo = new THREE.PlaneGeometry(TILE * 0.96, TILE * 0.96);
+const highlightMat = new THREE.MeshBasicMaterial({
+  color: 0xe8d3a8,
+  transparent: true,
+  opacity: 0.25,
+  side: THREE.DoubleSide,
+  depthWrite: false
+});
+const highlight = new THREE.Mesh(highlightGeo, highlightMat);
+highlight.rotation.x = -Math.PI / 2;
+highlight.position.y = 0.02;
+highlight.visible = false;
+scene.add(highlight);
 
-        <div class="score-grid">
-          ${scoreItem('Focus 集中度', focus)}
-          ${scoreItem('Memory 記憶定着', memory)}
-          ${scoreItem('Reward 報酬系', reward)}
-          ${scoreItem('Insight 洞察度', insight)}
-        </div>
+// ---------- Controls ----------
+const controls = new PointerLockControls(camera, document.body);
+const startOverlay = document.getElementById('start-overlay');
+const pauseOverlay = document.getElementById('pause-overlay');
 
-        <div class="summary-block">
-          <div class="section-title">Cognitive Overview</div>
-          <p>${escapeHtml(summary)}</p>
-        </div>
+document.getElementById('start-btn').addEventListener('click', () => controls.lock());
+document.getElementById('resume-btn').addEventListener('click', () => controls.lock());
 
-        <div>
-          <div class="section-title">Key Neural Insights</div>
-          <ul class="insight-list">
-            ${insights.map(i => `<li>${escapeHtml(i)}</li>`).join('')}
-          </ul>
-        </div>
-      </article>
-    `;
-    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+let firstLockDone = false;
+controls.addEventListener('lock', () => {
+  startOverlay.hidden = true;
+  pauseOverlay.hidden = true;
+  document.body.classList.add('locked');
+  firstLockDone = true;
+});
+controls.addEventListener('unlock', () => {
+  document.body.classList.remove('locked');
+  if (firstLockDone) pauseOverlay.hidden = false;
+});
 
-  const scoreItem = (label, value) => `
-    <div class="score-item">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
-      <div class="bar"><span style="width:${value}%"></span></div>
-    </div>
-  `;
+// ---------- Movement ----------
+const keys = Object.create(null);
+document.addEventListener('keydown', (e) => { keys[e.code] = true; });
+document.addEventListener('keyup',   (e) => { keys[e.code] = false; });
 
-  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
+const SPEED = 4.5;
+const SPRINT_MULT = 1.9;
+const dir = new THREE.Vector3();
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const url = input.value.trim();
-    if (!url) return;
+function updateMovement(dt) {
+  if (!controls.isLocked) return;
+  const sprint = keys['ShiftLeft'] || keys['ShiftRight'];
+  const speed = SPEED * (sprint ? SPRINT_MULT : 1);
 
-    btn.disabled = true;
-    buildLoading();
+  const forward = (keys['KeyW'] || keys['ArrowUp']   ? 1 : 0)
+                - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+  const strafe  = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0)
+                - (keys['KeyA'] || keys['ArrowLeft']  ? 1 : 0);
 
-    const delay = 1800 + Math.random() * 900;
-    setTimeout(() => {
-      buildResult(url);
-      btn.disabled = false;
-    }, delay);
-  });
-})();
+  dir.set(strafe, 0, forward);
+  if (dir.lengthSq() > 0) dir.normalize();
+
+  controls.moveForward(dir.z * speed * dt);
+  controls.moveRight(dir.x * speed * dt);
+
+  // keep grounded + clamp inside world
+  camera.position.y = PLAYER_HEIGHT;
+  const half = WORLD_SIZE / 2 - 1;
+  camera.position.x = Math.max(-half, Math.min(half, camera.position.x));
+  camera.position.z = Math.max(-half, Math.min(half, camera.position.z));
+}
+
+// ---------- Cube placement ----------
+const cubeMat = new THREE.MeshStandardMaterial({
+  color: 0xc9a878,
+  roughness: 0.55,
+  metalness: 0.08
+});
+const cubeEdgeMat = new THREE.LineBasicMaterial({ color: 0x4a3820, transparent: true, opacity: 0.5 });
+const cubeGeo = new THREE.BoxGeometry(TILE, TILE, TILE);
+const cubeEdgeGeo = new THREE.EdgesGeometry(cubeGeo);
+
+const cubes = [];
+const tileMap = new Map(); // "x,z" -> cube mesh
+
+const raycaster = new THREE.Raycaster();
+const screenCenter = new THREE.Vector2(0, 0);
+
+function aimedTile() {
+  raycaster.setFromCamera(screenCenter, camera);
+  const hits = raycaster.intersectObject(ground);
+  if (!hits.length) return null;
+  const p = hits[0].point;
+  const ix = Math.round(p.x / TILE);
+  const iz = Math.round(p.z / TILE);
+  // limit reach
+  const dist = camera.position.distanceTo(new THREE.Vector3(ix * TILE, 0, iz * TILE));
+  if (dist > 14) return null;
+  return { ix, iz };
+}
+
+function aimedCube() {
+  raycaster.setFromCamera(screenCenter, camera);
+  const hits = raycaster.intersectObjects(cubes, false);
+  if (!hits.length) return null;
+  if (hits[0].distance > 14) return null;
+  return hits[0].object;
+}
+
+function placeCube() {
+  const tile = aimedTile();
+  if (!tile) return;
+  const key = `${tile.ix},${tile.iz}`;
+  if (tileMap.has(key)) return;
+
+  const cube = new THREE.Mesh(cubeGeo, cubeMat);
+  cube.position.set(tile.ix * TILE, TILE / 2, tile.iz * TILE);
+  cube.castShadow = true;
+  cube.receiveShadow = true;
+  cube.userData.tileKey = key;
+
+  const edges = new THREE.LineSegments(cubeEdgeGeo, cubeEdgeMat);
+  cube.add(edges);
+
+  scene.add(cube);
+  cubes.push(cube);
+  tileMap.set(key, cube);
+}
+
+function removeCube() {
+  const cube = aimedCube();
+  if (!cube) return;
+  scene.remove(cube);
+  tileMap.delete(cube.userData.tileKey);
+  cubes.splice(cubes.indexOf(cube), 1);
+}
+
+document.addEventListener('mousedown', (e) => {
+  if (!controls.isLocked) return;
+  if (e.button === 0) placeCube();
+  else if (e.button === 2) removeCube();
+});
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ---------- Highlight loop ----------
+function updateHighlight() {
+  if (!controls.isLocked) {
+    highlight.visible = false;
+    return;
+  }
+  const tile = aimedTile();
+  if (!tile) {
+    highlight.visible = false;
+    return;
+  }
+  const key = `${tile.ix},${tile.iz}`;
+  const occupied = tileMap.has(key);
+  highlight.visible = true;
+  highlight.position.x = tile.ix * TILE;
+  highlight.position.z = tile.iz * TILE;
+  highlightMat.color.setHex(occupied ? 0xff8a8a : 0xe8d3a8);
+  highlightMat.opacity = occupied ? 0.18 : 0.28;
+}
+
+// ---------- Resize ----------
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---------- Animate ----------
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  updateMovement(dt);
+  updateHighlight();
+  // gentle accent pulse
+  accent.intensity = 1.2 + Math.sin(performance.now() * 0.0015) * 0.25;
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
