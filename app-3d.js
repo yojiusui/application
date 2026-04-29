@@ -140,6 +140,8 @@ function init() {
   const controls = new PointerLockControls(camera, document.body);
 
   let firstLockDone = false;
+  let mode                 = 'walk';     // 'walk' | 'build'
+  let suppressPauseOverlay = false;
 
   controls.addEventListener('lock', () => {
     if (startOverlay) startOverlay.hidden = true;
@@ -150,10 +152,14 @@ function init() {
 
   controls.addEventListener('unlock', () => {
     document.body.classList.remove('walk-locked');
-    // Only show pause overlay if no app-level modal is currently open.
-    if (firstLockDone && !anyModalOpen() && pauseOverlay) {
+    if (firstLockDone
+        && !suppressPauseOverlay
+        && mode === 'walk'
+        && !anyModalOpen()
+        && pauseOverlay) {
       pauseOverlay.hidden = false;
     }
+    suppressPauseOverlay = false;
   });
 
   startBtn?.addEventListener('click', () => safeLock(controls));
@@ -169,6 +175,14 @@ function init() {
     // Don't intercept typing in inputs / textareas
     if (isTypingTarget(e.target)) return;
     keys[e.code] = true;
+
+    if (e.code === 'KeyB' && firstLockDone && !anyModalOpen()) {
+      e.preventDefault();
+      setMode(mode === 'walk' ? 'build' : 'walk');
+    } else if (e.code === 'KeyR' && mode === 'build') {
+      e.preventDefault();
+      ghostRotation = (ghostRotation + Math.PI / 2) % (Math.PI * 2);
+    }
   });
   document.addEventListener('keyup', (e) => {
     keys[e.code] = false;
@@ -377,13 +391,410 @@ function init() {
     refreshClickTargets();
   };
 
-  // ---------- Click → open seed modal ----------
+  // ---------- Raycaster (shared by walk + build modes) ----------
   const raycaster    = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
 
+  // ---------- Furniture system ----------
+  const FURNITURE_STORAGE_KEY = 'knowledge_estate_furniture_v1';
+  const FURNITURE_NAMES = {
+    bookshelf: '本棚',
+    desk:      'デスク',
+    sofa:      'ソファ',
+    plant:     '観葉植物'
+  };
+
+  const F = {
+    walnut:  new THREE.MeshStandardMaterial({ color: 0x4a3424, roughness: 0.7,  metalness: 0.06 }),
+    oak:     new THREE.MeshStandardMaterial({ color: 0xb89968, roughness: 0.65, metalness: 0.05 }),
+    cream:   new THREE.MeshStandardMaterial({ color: 0xe8dcc4, roughness: 0.85 }),
+    fabric:  new THREE.MeshStandardMaterial({ color: 0x4a4860, roughness: 0.95 }),
+    cushion: new THREE.MeshStandardMaterial({ color: 0x6a6680, roughness: 0.95 }),
+    metal:   new THREE.MeshStandardMaterial({ color: 0x2a2a32, roughness: 0.35, metalness: 0.75 }),
+    ceramic: new THREE.MeshStandardMaterial({ color: 0xc9b8a6, roughness: 0.5,  metalness: 0.05 }),
+    soil:    new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.95 }),
+    leaf:    new THREE.MeshStandardMaterial({ color: 0x3a6a48, roughness: 0.7 }),
+    leafD:   new THREE.MeshStandardMaterial({ color: 0x2a4a30, roughness: 0.7 }),
+    bookA:   new THREE.MeshStandardMaterial({ color: 0x8a3a3a, roughness: 0.8 }),
+    bookB:   new THREE.MeshStandardMaterial({ color: 0x3a5a8a, roughness: 0.8 }),
+    bookC:   new THREE.MeshStandardMaterial({ color: 0xc9a878, roughness: 0.8 }),
+    bookD:   new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.8 }),
+    gold:    new THREE.MeshStandardMaterial({ color: 0xd4af7a, roughness: 0.4,  metalness: 0.6 }),
+    stem:    new THREE.MeshStandardMaterial({ color: 0x4a3a28, roughness: 0.9 })
+  };
+
+  function applyFurnitureShadows(group) {
+    group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+  }
+
+  function makeBookshelf() {
+    const g = new THREE.Group();
+    const W = 1.2, D = 0.4, H = 1.65;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), F.walnut);
+    body.position.y = H / 2;
+    g.add(body);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(W - 0.06, H - 0.06, 0.02), F.cream);
+    back.position.set(0, H / 2, -D / 2 + 0.025);
+    g.add(back);
+    for (let i = 1; i <= 3; i++) {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(W - 0.08, 0.025, D - 0.06), F.cream);
+      s.position.set(0, (H / 4) * i, 0.005);
+      g.add(s);
+    }
+    const bookMats = [F.bookA, F.bookB, F.bookC, F.bookD];
+    for (let row = 0; row < 4; row++) {
+      const yBase = (H / 4) * row + 0.04;
+      let x = -W / 2 + 0.08;
+      let i = 0;
+      while (x < W / 2 - 0.1) {
+        const bw = 0.08 + ((row * 7 + i * 13) % 5) * 0.012;
+        const bh = 0.22 + ((row * 11 + i * 5) % 8) * 0.014;
+        const mat = bookMats[(row * 3 + i) % bookMats.length];
+        const book = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D - 0.12), mat);
+        book.position.set(x + bw / 2, yBase + bh / 2, 0.01);
+        g.add(book);
+        x += bw + 0.006;
+        i++;
+      }
+    }
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(W + 0.05, 0.04, D + 0.04), F.gold);
+    trim.position.y = H + 0.005;
+    g.add(trim);
+    applyFurnitureShadows(g);
+    return g;
+  }
+
+  function makeDesk() {
+    const g = new THREE.Group();
+    const W = 1.4, D = 0.65, H = 0.74;
+    const top = new THREE.Mesh(new THREE.BoxGeometry(W, 0.04, D), F.oak);
+    top.position.y = H;
+    g.add(top);
+    const legGeo = new THREE.CylinderGeometry(0.025, 0.025, H, 12);
+    for (const [x, z] of [[ W/2-0.08,-D/2+0.08],[-W/2+0.08,-D/2+0.08],[ W/2-0.08, D/2-0.08],[-W/2+0.08, D/2-0.08]]) {
+      const leg = new THREE.Mesh(legGeo, F.metal);
+      leg.position.set(x, H / 2, z);
+      g.add(leg);
+    }
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(W * 0.45, 0.12, D - 0.1), F.walnut);
+    drawer.position.set(W * 0.22, H - 0.1, 0);
+    g.add(drawer);
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.015, 0.03), F.gold);
+    handle.position.set(W * 0.22, H - 0.1, D / 2 - 0.04);
+    g.add(handle);
+    applyFurnitureShadows(g);
+    return g;
+  }
+
+  function makeSofa() {
+    const g = new THREE.Group();
+    const W = 1.7, D = 0.85, H = 0.78;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(W, 0.32, D), F.fabric);
+    base.position.y = 0.18;
+    g.add(base);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(W, H - 0.34, 0.18), F.fabric);
+    back.position.set(0, 0.18 + (H - 0.34) / 2, -D / 2 + 0.09);
+    g.add(back);
+    const armGeo = new THREE.BoxGeometry(0.18, 0.42, D - 0.05);
+    const armL = new THREE.Mesh(armGeo, F.fabric); armL.position.set(-W / 2 + 0.09, 0.21, 0);
+    const armR = new THREE.Mesh(armGeo, F.fabric); armR.position.set( W / 2 - 0.09, 0.21, 0);
+    g.add(armL, armR);
+    const cushW = (W - 0.4) / 2 - 0.03;
+    const cushGeo = new THREE.BoxGeometry(cushW, 0.16, D - 0.25);
+    const cushL = new THREE.Mesh(cushGeo, F.cushion); cushL.position.set(-cushW / 2 - 0.03, 0.42, 0.05);
+    const cushR = new THREE.Mesh(cushGeo, F.cushion); cushR.position.set( cushW / 2 + 0.03, 0.42, 0.05);
+    g.add(cushL, cushR);
+    const footGeo = new THREE.BoxGeometry(0.05, 0.06, 0.05);
+    for (const [x, z] of [[W/2-0.1,D/2-0.1],[-W/2+0.1,D/2-0.1],[W/2-0.1,-D/2+0.1],[-W/2+0.1,-D/2+0.1]]) {
+      const foot = new THREE.Mesh(footGeo, F.metal);
+      foot.position.set(x, 0.03, z);
+      g.add(foot);
+    }
+    applyFurnitureShadows(g);
+    return g;
+  }
+
+  function makePlant() {
+    const g = new THREE.Group();
+    const potH = 0.42;
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, potH, 16), F.ceramic);
+    pot.position.y = potH / 2;
+    g.add(pot);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.018, 8, 24), F.gold);
+    rim.position.y = potH; rim.rotation.x = Math.PI / 2;
+    g.add(rim);
+    const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.245, 0.02, 16), F.soil);
+    soil.position.y = potH - 0.005;
+    g.add(soil);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.55, 8), F.stem);
+    stem.position.y = potH + 0.27;
+    g.add(stem);
+    const foliage = [
+      { y: 0.78, x:  0.0,  z:  0.0,  r: 0.30, s: [1.2, 1.0, 1.2], m: F.leaf  },
+      { y: 0.95, x: -0.18, z:  0.05, r: 0.26, s: [1.0, 0.9, 1.0], m: F.leafD },
+      { y: 0.95, x:  0.18, z: -0.05, r: 0.26, s: [1.0, 0.9, 1.0], m: F.leaf  },
+      { y: 1.05, x:  0.04, z:  0.18, r: 0.24, s: [1.0, 0.9, 1.0], m: F.leafD },
+      { y: 1.18, x:  0.0,  z:  0.0,  r: 0.22, s: [0.95, 0.85, 0.95], m: F.leaf }
+    ];
+    for (const f of foliage) {
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(f.r, 14, 10), f.m);
+      leaf.scale.set(...f.s);
+      leaf.position.set(f.x, f.y, f.z);
+      g.add(leaf);
+    }
+    applyFurnitureShadows(g);
+    return g;
+  }
+
+  const FURNITURE_BUILD = {
+    bookshelf: makeBookshelf,
+    desk:      makeDesk,
+    sofa:      makeSofa,
+    plant:     makePlant
+  };
+
+  // ----- State -----
+  const placedFurniture = [];
+  const furnitureMap    = new Map(); // "ix,iz" -> root group
+  let selectedFurniture = null;
+  let ghost             = null;
+  let ghostRotation     = 0;
+
+  // ----- Floor highlight tile (used to flag valid/blocked placement) -----
+  const highlightMat = new THREE.MeshBasicMaterial({
+    color: 0xe8d3a8, transparent: true, opacity: 0.28,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+  const highlight = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 0.96, TILE * 0.96), highlightMat);
+  highlight.rotation.x = -Math.PI / 2;
+  highlight.position.y = 0.02;
+  highlight.visible = false;
+  scene.add(highlight);
+
+  // ----- Mouse position (build mode raycast input) -----
+  const mouseNDC = new THREE.Vector2(-2, -2);
+  let mouseOverCanvas = false;
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseNDC.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+    mouseNDC.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    mouseOverCanvas = true;
+  });
+  canvas.addEventListener('mouseenter', () => { mouseOverCanvas = true;  });
+  canvas.addEventListener('mouseleave', () => { mouseOverCanvas = false; });
+
+  function ensureGhost(type) {
+    if (ghost && ghost.userData.type === type) return ghost;
+    if (ghost) {
+      scene.remove(ghost);
+      ghost.traverse((c) => { if (c.isMesh && c.geometry) c.geometry.dispose(); });
+    }
+    const g = FURNITURE_BUILD[type]();
+    g.traverse((c) => {
+      if (c.isMesh) {
+        c.castShadow = false;
+        c.receiveShadow = false;
+        c.material = c.material.clone();
+        c.material.transparent = true;
+        c.material.opacity = 0.55;
+        c.material.depthWrite = false;
+        c.material.emissive = new THREE.Color(0xd4af7a);
+        c.material.emissiveIntensity = 0.18;
+      }
+    });
+    g.userData.type = type;
+    scene.add(g);
+    ghost = g;
+    return ghost;
+  }
+
+  function clearGhost() {
+    if (ghost) {
+      scene.remove(ghost);
+      ghost.traverse((c) => { if (c.isMesh && c.geometry) c.geometry.dispose(); });
+      ghost = null;
+    }
+  }
+
+  function buildAimedTile() {
+    raycaster.setFromCamera(mouseNDC, camera);
+    const hits = raycaster.intersectObject(ground);
+    if (!hits.length) return null;
+    const p = hits[0].point;
+    return { ix: Math.round(p.x / TILE), iz: Math.round(p.z / TILE) };
+  }
+
+  function aimedFurniture() {
+    if (!placedFurniture.length) return null;
+    raycaster.setFromCamera(mouseNDC, camera);
+    const meshes = [];
+    for (const f of placedFurniture) f.traverse((c) => { if (c.isMesh) meshes.push(c); });
+    const hits = raycaster.intersectObjects(meshes);
+    if (!hits.length) return null;
+    let obj = hits[0].object;
+    while (obj && !obj.userData.isFurniture) obj = obj.parent;
+    return obj || null;
+  }
+
+  function instantiateFurniture(type, ix, iz, rot) {
+    const g = FURNITURE_BUILD[type]();
+    g.position.set(ix * TILE, 0, iz * TILE);
+    g.rotation.y = rot;
+    g.userData = { isFurniture: true, type, key: `${ix},${iz}`, ix, iz, rot };
+    scene.add(g);
+    placedFurniture.push(g);
+    furnitureMap.set(g.userData.key, g);
+    return g;
+  }
+
+  function placeFurniture() {
+    if (!selectedFurniture || !ghost || !ghost.visible) return;
+    const ix = Math.round(ghost.position.x / TILE);
+    const iz = Math.round(ghost.position.z / TILE);
+    const key = `${ix},${iz}`;
+    if (furnitureMap.has(key)) return;
+    instantiateFurniture(selectedFurniture, ix, iz, ghostRotation);
+    saveFurniture();
+  }
+
+  function removeFurniture() {
+    const obj = aimedFurniture();
+    if (!obj) return;
+    scene.remove(obj);
+    furnitureMap.delete(obj.userData.key);
+    const i = placedFurniture.indexOf(obj);
+    if (i >= 0) placedFurniture.splice(i, 1);
+    obj.traverse((c) => { if (c.isMesh && c.geometry) c.geometry.dispose(); });
+    saveFurniture();
+  }
+
+  function updateBuildAim() {
+    if (mode !== 'build' || !selectedFurniture || !mouseOverCanvas) {
+      if (ghost) ghost.visible = false;
+      highlight.visible = false;
+      return;
+    }
+    ensureGhost(selectedFurniture);
+    const tile = buildAimedTile();
+    if (!tile) {
+      ghost.visible = false;
+      highlight.visible = false;
+      return;
+    }
+    const key = `${tile.ix},${tile.iz}`;
+    const occupied = furnitureMap.has(key);
+    ghost.visible = !occupied;
+    ghost.position.set(tile.ix * TILE, 0, tile.iz * TILE);
+    ghost.rotation.y = ghostRotation;
+
+    highlight.visible = true;
+    highlight.position.set(tile.ix * TILE, 0.02, tile.iz * TILE);
+    highlightMat.color.setHex(occupied ? 0xff8a8a : 0xe8d3a8);
+    highlightMat.opacity = occupied ? 0.22 : 0.32;
+  }
+
+  // ----- Persistence -----
+  function saveFurniture() {
+    const arr = placedFurniture.map(g => ({
+      type: g.userData.type,
+      ix:   g.userData.ix,
+      iz:   g.userData.iz,
+      rot:  g.rotation.y
+    }));
+    try { localStorage.setItem(FURNITURE_STORAGE_KEY, JSON.stringify(arr)); } catch { /* quota */ }
+  }
+
+  function loadFurniture() {
+    let arr;
+    try { arr = JSON.parse(localStorage.getItem(FURNITURE_STORAGE_KEY) || '[]'); }
+    catch { return; }
+    if (!Array.isArray(arr)) return;
+    for (const item of arr) {
+      if (!item || !FURNITURE_BUILD[item.type]) continue;
+      const ix  = Number.isFinite(item.ix)  ? item.ix  : 0;
+      const iz  = Number.isFinite(item.iz)  ? item.iz  : 0;
+      const rot = Number.isFinite(item.rot) ? item.rot : 0;
+      if (furnitureMap.has(`${ix},${iz}`)) continue;
+      instantiateFurniture(item.type, ix, iz, rot);
+    }
+  }
+
+  // ----- Build panel UI wiring -----
+  const buildPanel       = document.getElementById('buildPanel');
+  const selectionInfo    = document.getElementById('furnitureSelectionInfo');
+  const exitBuildBtn     = document.getElementById('exitBuildBtn');
+  const modeLabel        = document.getElementById('modeLabel');
+  const modeKeys         = document.getElementById('modeKeys');
+  const catItems         = document.querySelectorAll('.cat-item');
+
+  function setSelectionDisplay(name) {
+    if (!selectionInfo) return;
+    if (name) {
+      selectionInfo.textContent = `選択中：${name}（R で回転）`;
+      selectionInfo.classList.add('has-selection');
+    } else {
+      selectionInfo.textContent = '家具を選んでください';
+      selectionInfo.classList.remove('has-selection');
+    }
+  }
+
+  function clearSelection() {
+    selectedFurniture = null;
+    catItems.forEach((b) => b.classList.remove('active'));
+    setSelectionDisplay(null);
+    clearGhost();
+  }
+
+  catItems.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.item;
+      if (selectedFurniture === id) { clearSelection(); return; }
+      selectedFurniture = id;
+      ghostRotation = 0;
+      catItems.forEach((b) => b.classList.toggle('active', b === btn));
+      setSelectionDisplay(FURNITURE_NAMES[id] ?? id);
+    });
+  });
+
+  exitBuildBtn?.addEventListener('click', () => setMode('walk'));
+
+  // ----- Mode toggle -----
+  function setMode(next) {
+    if (next === mode) return;
+    mode = next;
+    if (mode === 'build') {
+      document.body.classList.remove('walk-locked');
+      document.body.classList.add('build-mode');
+      if (modeLabel) modeLabel.textContent = 'Build';
+      if (modeKeys)  modeKeys.textContent  = 'クリックで配置 / 右クリックで撤去 / R で回転 / B で歩行';
+      if (controls.isLocked) {
+        suppressPauseOverlay = true;
+        controls.unlock();
+      }
+      if (pauseOverlay) pauseOverlay.hidden = true;
+    } else {
+      document.body.classList.remove('build-mode');
+      if (modeLabel) modeLabel.textContent = 'Walk';
+      if (modeKeys)  modeKeys.textContent  = 'WASD移動 / マウス視点 / B でビルド';
+      clearSelection();
+      highlight.visible = false;
+      if (firstLockDone) {
+        try { controls.lock(); } catch { /* cooldown */ }
+      }
+    }
+  }
+
+  // ---------- Click dispatch (walk = open seed modal, build = place/remove) ----------
   document.addEventListener('mousedown', (e) => {
+    if (mode === 'build') {
+      if (e.target !== canvas) return;            // ignore clicks on UI panel
+      if (e.button === 0) placeFurniture();
+      else if (e.button === 2) removeFurniture();
+      return;
+    }
+    // walk mode — click on a seed orb opens its modal
     if (e.button !== 0) return;
-    if (!controls.isLocked) return; // ignore clicks while paused / on overlays
+    if (!controls.isLocked) return;
     if (!seedClickTargets.length) return;
 
     raycaster.setFromCamera(screenCenter, camera);
@@ -397,11 +808,15 @@ function init() {
 
     const id = obj.userData.seedId;
     if (typeof window.openSeedModal === 'function') {
-      // Open modal first so the unlock handler sees a modal already open
-      // and skips showing the pause overlay.
       window.openSeedModal(id);
       controls.unlock();
     }
+  });
+
+  document.addEventListener('contextmenu', (e) => {
+    // Suppress browser menu inside the canvas while building so right-click
+    // can be used to remove furniture.
+    if (mode === 'build' && e.target === canvas) e.preventDefault();
   });
 
   // ---------- Modal close → restore pause overlay ----------
@@ -409,7 +824,12 @@ function init() {
   // and no overlay is visible. Watch for any modal becoming hidden again
   // and re-show the pause card so the user has a clear path back.
   const modalObserver = new MutationObserver(() => {
-    if (firstLockDone && !controls.isLocked && !anyModalOpen() && pauseOverlay && pauseOverlay.hidden) {
+    if (firstLockDone
+        && !controls.isLocked
+        && mode === 'walk'
+        && !anyModalOpen()
+        && pauseOverlay
+        && pauseOverlay.hidden) {
       pauseOverlay.hidden = false;
     }
   });
@@ -451,10 +871,15 @@ function init() {
     const t  = performance.now() * 0.001;
     updateMovement(dt);
     animateOrbs(t);
+    updateBuildAim();
     accent.intensity = 1.2 + Math.sin(t * 1.5) * 0.25;
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
   }
+
+  // Restore the user's previously saved furniture before the first frame.
+  loadFurniture();
+
   animate();
 
   // Seeds that loaded before this module initialized are now visible —
