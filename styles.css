@@ -1417,3 +1417,98 @@ html, body {
 
 /* ===== UTILITIES ===== */
 [hidden] { display: none !important; }
+
+/* ============================================================ */
+/* ===== 3D ESTATE — STEP 2 (canvas + walk overlays only) ===== */
+/* ============================================================ */
+
+#scene-canvas {
+  position: absolute;
+  inset: 0;
+  width:  100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+  background: #07060c;
+}
+
+/* HUD overlays — hidden until step 3 wires them; keep markup inert. */
+.hud-3d              { display: none; }
+.crosshair-3d        { display: none; }
+.build-panel         { display: none; }
+
+/* Walk start / pause overlays — visible so the user can enter the scene. */
+.walk-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at center, rgba(11,10,20,0.55), rgba(7,6,12,0.92));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+.walk-overlay.subtle { background: rgba(7,6,12,0.55); }
+.walk-overlay[hidden] { display: none; }
+
+.walk-overlay-card {
+  width: min(420px, 88%);
+  padding: 32px 30px;
+  background: rgba(20,18,32,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  text-align: center;
+  color: #ece9f5;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.85);
+}
+.walk-overlay-card.sm {
+  width: min(320px, 86%);
+  padding: 24px 22px;
+}
+
+.walk-eyebrow {
+  font-size: 0.78rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #d4af7a;
+  margin-bottom: 10px;
+}
+
+.walk-overlay-card h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+  color: #e8d3a8;
+}
+
+.walk-desc {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: #9b96b3;
+  margin-bottom: 22px;
+}
+
+.walk-overlay-card .btn-primary {
+  display: inline-block;
+  padding: 12px 26px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #0b0a14;
+  background: linear-gradient(135deg, #e8d3a8, #d4af7a);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.walk-overlay-card .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px -10px rgba(212,175,122,0.55);
+}
+
+/* Hide legacy 2D placeholder elements that no longer make sense in 3D mode. */
+.live2d-placeholder,
+.room-floor { display: none !important; }
